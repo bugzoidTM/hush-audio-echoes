@@ -27,21 +27,33 @@ const PrivateGroups = () => {
         .from('group_members')
         .select(`
           *,
-          private_groups (
+          private_groups!inner (
             id,
             name,
             description,
             created_by,
-            created_at,
-            profiles:created_by (
-              display_name
-            )
+            created_at
           )
         `)
         .eq('user_id', user.id);
 
       if (error) throw error;
-      return data;
+
+      // Get creator profiles separately
+      const creatorIds = data.map(item => item.private_groups.created_by);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', creatorIds);
+
+      // Merge profile data
+      return data.map(item => ({
+        ...item,
+        private_groups: {
+          ...item.private_groups,
+          creator_profile: profiles?.find(p => p.id === item.private_groups.created_by)
+        }
+      }));
     },
     enabled: !!user,
   });
@@ -189,7 +201,7 @@ const PrivateGroups = () => {
               <CardContent>
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">
-                    Criado por: {membership.private_groups.profiles?.display_name || 'Usuário'}
+                    Criado por: {membership.private_groups.creator_profile?.display_name || 'Usuário'}
                   </div>
                   {membership.is_admin && (
                     <Button variant="outline" size="sm">

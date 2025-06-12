@@ -360,13 +360,24 @@ const ReportManagement = () => {
         .from('reports')
         .select(`
           *,
-          audio_posts (title, audio_url),
-          profiles:reporter_id (display_name)
+          audio_posts (title, audio_url)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+
+      // Get reporter profiles separately
+      const reporterIds = data.filter(r => r.reporter_id).map(r => r.reporter_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', reporterIds);
+
+      // Merge profile data
+      return data.map(report => ({
+        ...report,
+        reporter_profile: profiles?.find(p => p.id === report.reporter_id)
+      }));
     },
   });
 
@@ -386,7 +397,7 @@ const ReportManagement = () => {
                   <Badge variant="outline">{report.status}</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Por: {report.profiles?.display_name || 'Usuário anônimo'}
+                  Por: {report.reporter_profile?.display_name || 'Usuário anônimo'}
                 </p>
                 {report.description && (
                   <p className="text-sm">{report.description}</p>

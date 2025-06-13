@@ -1,12 +1,12 @@
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Mic, Square, Play, Pause, RotateCcw } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { Mic, Square, Play, Pause } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface SimpleRecordModalProps {
   open: boolean;
@@ -17,51 +17,36 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
   const [description, setDescription] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [voiceFilter, setVoiceFilter] = useState<string>('none');
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [selectedFilter, setSelectedFilter] = useState<string>('normal');
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
-  const biquadFilterRef = useRef<BiquadFilterNode | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   
-  const { toast } = useToast();
   const { user } = useAuth();
+  const { toast } = useToast();
 
-  const startRecording = useCallback(async () => {
+  const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // Configurar filtros de áudio
-      audioContextRef.current = new AudioContext();
-      sourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
-      gainNodeRef.current = audioContextRef.current.createGain();
-      biquadFilterRef.current = audioContextRef.current.createBiquadFilter();
-      
-      // Aplicar filtro selecionado
-      applyVoiceFilter();
-      
-      sourceRef.current.connect(biquadFilterRef.current);
-      biquadFilterRef.current.connect(gainNodeRef.current);
-      
       const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
       
-      const chunks: Blob[] = [];
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          chunks.push(event.data);
+          audioChunksRef.current.push(event.data);
         }
       };
       
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        setAudioBlob(blob);
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setAudioBlob(audioBlob);
         stream.getTracks().forEach(track => track.stop());
       };
       
@@ -69,10 +54,9 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
       setIsRecording(true);
       setRecordingTime(0);
       
-      // Timer de gravação com limite de 60 segundos
-      intervalRef.current = setInterval(() => {
-        setRecordingTime((prev) => {
-          if (prev >= 59) {
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => {
+          if (prev >= 60) {
             stopRecording();
             return 60;
           }
@@ -88,111 +72,155 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
         variant: "destructive"
       });
     }
-  }, [voiceFilter]);
-
-  const applyVoiceFilter = () => {
-    if (!biquadFilterRef.current || !gainNodeRef.current) return;
-    
-    switch (voiceFilter) {
-      case 'robot':
-        biquadFilterRef.current.type = 'lowpass';
-        biquadFilterRef.current.frequency.value = 1000;
-        gainNodeRef.current.gain.value = 1.5;
-        break;
-      case 'deep':
-        biquadFilterRef.current.type = 'lowpass';
-        biquadFilterRef.current.frequency.value = 500;
-        gainNodeRef.current.gain.value = 2;
-        break;
-      case 'high':
-        biquadFilterRef.current.type = 'highpass';
-        biquadFilterRef.current.frequency.value = 1000;
-        gainNodeRef.current.gain.value = 1.2;
-        break;
-      case 'echo':
-        // Efeito de eco básico
-        gainNodeRef.current.gain.value = 0.8;
-        break;
-      default:
-        biquadFilterRef.current.type = 'allpass';
-        gainNodeRef.current.gain.value = 1;
-    }
   };
 
-  const stopRecording = useCallback(() => {
+  const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       }
-      
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-    }
-  }, [isRecording]);
-
-  const playAudio = () => {
-    if (audioBlob && !isPlaying) {
-      const audioUrl = URL.createObjectURL(audioBlob);
-      audioRef.current = new Audio(audioUrl);
-      audioRef.current.play();
-      setIsPlaying(true);
-      
-      audioRef.current.onended = () => {
-        setIsPlaying(false);
-        URL.revokeObjectURL(audioUrl);
-      };
     }
   };
 
-  const pauseAudio = () => {
-    if (audioRef.current && isPlaying) {
+  const applyVoiceFilter = async (audioBlob: Blob, filter: string): Promise<Blob> => {
+    if (filter === 'normal') return audioBlob;
+    
+    try {
+      const audioContext = new AudioContext();
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      
+      const offlineContext = new OfflineAudioContext(
+        audioBuffer.numberOfChannels,
+        audioBuffer.length,
+        audioBuffer.sampleRate
+      );
+      
+      const source = offlineContext.createBufferSource();
+      source.buffer = audioBuffer;
+      
+      let filterNode;
+      
+      switch (filter) {
+        case 'robot':
+          filterNode = offlineContext.createBiquadFilter();
+          filterNode.type = 'bandpass';
+          filterNode.frequency.value = 1000;
+          break;
+        case 'deep':
+          filterNode = offlineContext.createBiquadFilter();
+          filterNode.type = 'lowpass';
+          filterNode.frequency.value = 500;
+          break;
+        case 'high':
+          filterNode = offlineContext.createBiquadFilter();
+          filterNode.type = 'highpass';
+          filterNode.frequency.value = 2000;
+          break;
+        case 'echo':
+          filterNode = offlineContext.createDelay();
+          filterNode.delayTime.value = 0.3;
+          break;
+        default:
+          filterNode = offlineContext.createGain();
+      }
+      
+      source.connect(filterNode);
+      filterNode.connect(offlineContext.destination);
+      source.start();
+      
+      const renderedBuffer = await offlineContext.startRendering();
+      
+      const wavBlob = audioBufferToWav(renderedBuffer);
+      return wavBlob;
+    } catch (error) {
+      console.error('Erro ao aplicar filtro:', error);
+      return audioBlob;
+    }
+  };
+
+  const audioBufferToWav = (buffer: AudioBuffer): Blob => {
+    const length = buffer.length * buffer.numberOfChannels * 2 + 44;
+    const arrayBuffer = new ArrayBuffer(length);
+    const view = new DataView(arrayBuffer);
+    
+    const writeString = (offset: number, string: string) => {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    };
+    
+    writeString(0, 'RIFF');
+    view.setUint32(4, length - 8, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, buffer.numberOfChannels, true);
+    view.setUint32(24, buffer.sampleRate, true);
+    view.setUint32(28, buffer.sampleRate * buffer.numberOfChannels * 2, true);
+    view.setUint16(32, buffer.numberOfChannels * 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, length - 44, true);
+    
+    let offset = 44;
+    for (let i = 0; i < buffer.length; i++) {
+      for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+        const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[i]));
+        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+        offset += 2;
+      }
+    }
+    
+    return new Blob([arrayBuffer], { type: 'audio/wav' });
+  };
+
+  const playAudio = () => {
+    if (audioBlob) {
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      
+      audio.onended = () => {
+        setIsPlaying(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      audio.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const stopAudio = () => {
+    if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.currentTime = 0;
       setIsPlaying(false);
     }
   };
 
-  const resetRecording = () => {
-    setAudioBlob(null);
-    setRecordingTime(0);
-    setIsPlaying(false);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   const uploadAudio = async () => {
-    if (!audioBlob || !user || !description.trim()) {
-      toast({
-        title: "Erro",
-        description: "Adicione uma descrição para o áudio",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (!audioBlob || !user) return;
 
     setIsUploading(true);
+    
     try {
+      const processedBlob = await applyVoiceFilter(audioBlob, selectedFilter);
       const fileName = `${user.id}/${Date.now()}.webm`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('audio-files')
-        .upload(fileName, audioBlob);
+        .upload(fileName, processedBlob, {
+          contentType: 'audio/webm'
+        });
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
+      const { data: { publicUrl } } = supabase.storage
         .from('audio-files')
         .getPublicUrl(fileName);
 
@@ -200,8 +228,8 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
         .from('audio_posts')
         .insert({
           user_id: user.id,
-          audio_url: urlData.publicUrl,
-          description: description.trim(),
+          description: description,
+          audio_url: publicUrl,
           duration: recordingTime,
           status: 'active'
         });
@@ -210,17 +238,17 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
 
       toast({
         title: "Sucesso!",
-        description: "Áudio publicado com sucesso"
+        description: "Áudio publicado com sucesso",
       });
 
       onClose();
       setAudioBlob(null);
       setDescription('');
       setRecordingTime(0);
-      window.location.reload(); // Recarregar para mostrar novo áudio
+      setSelectedFilter('normal');
       
     } catch (error) {
-      console.error('Erro ao publicar áudio:', error);
+      console.error('Erro ao enviar áudio:', error);
       toast({
         title: "Erro",
         description: "Não foi possível publicar o áudio",
@@ -231,97 +259,112 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
     }
   };
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Gravar Áudio</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4">
-          {/* Filtros de Voz */}
-          <div>
-            <label className="text-sm font-medium">Filtro de Voz</label>
-            <select 
-              value={voiceFilter} 
-              onChange={(e) => setVoiceFilter(e.target.value)}
-              className="w-full mt-1 p-2 border rounded-md"
-            >
-              <option value="none">Normal</option>
-              <option value="robot">Robô</option>
-              <option value="deep">Grave</option>
-              <option value="high">Agudo</option>
-              <option value="echo">Eco</option>
-            </select>
-          </div>
-
-          {/* Timer */}
+        <div className="space-y-6">
           <div className="text-center">
-            <div className="text-2xl font-mono">
-              {formatTime(recordingTime)} / 1:00
+            <div className="mb-4">
+              {isRecording && (
+                <div className="text-lg font-mono text-red-500">
+                  {formatTime(recordingTime)} / 1:00
+                </div>
+              )}
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-              <div 
-                className="bg-red-500 h-2 rounded-full transition-all duration-1000"
-                style={{ width: `${(recordingTime / 60) * 100}%` }}
-              />
+            
+            <div className="flex justify-center space-x-4">
+              {!isRecording ? (
+                <Button
+                  onClick={startRecording}
+                  className="bg-red-500 hover:bg-red-600 rounded-full w-16 h-16"
+                >
+                  <Mic className="w-6 h-6" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={stopRecording}
+                  className="bg-gray-500 hover:bg-gray-600 rounded-full w-16 h-16"
+                >
+                  <Square className="w-6 h-6" />
+                </Button>
+              )}
+              
+              {audioBlob && !isRecording && (
+                <Button
+                  onClick={isPlaying ? stopAudio : playAudio}
+                  variant="outline"
+                  className="rounded-full w-16 h-16"
+                >
+                  {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+                </Button>
+              )}
             </div>
           </div>
 
-          {/* Controles de Gravação */}
-          <div className="flex justify-center space-x-4">
-            {!isRecording && !audioBlob && (
-              <Button onClick={startRecording} className="bg-red-500 hover:bg-red-600">
-                <Mic className="w-4 h-4 mr-2" />
-                Gravar
-              </Button>
-            )}
-            
-            {isRecording && (
-              <Button onClick={stopRecording} variant="outline">
-                <Square className="w-4 h-4 mr-2" />
-                Parar
-              </Button>
-            )}
-            
-            {audioBlob && !isRecording && (
-              <>
-                <Button onClick={isPlaying ? pauseAudio : playAudio} variant="outline">
-                  {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                </Button>
-                <Button onClick={resetRecording} variant="outline">
-                  <RotateCcw className="w-4 h-4" />
-                </Button>
-              </>
-            )}
-          </div>
-
-          {/* Descrição */}
           {audioBlob && (
-            <div>
-              <label className="text-sm font-medium">Descrição</label>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Adicione uma descrição e hashtags (#exemplo)..."
-                className="mt-1"
-                maxLength={500}
-              />
-              <div className="text-xs text-gray-500 mt-1">
-                {description.length}/500 caracteres
+            <>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Filtro de Voz</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'normal', label: 'Normal' },
+                    { value: 'robot', label: 'Robô' },
+                    { value: 'deep', label: 'Grave' },
+                    { value: 'high', label: 'Agudo' },
+                    { value: 'echo', label: 'Eco' }
+                  ].map((filter) => (
+                    <Button
+                      key={filter.value}
+                      variant={selectedFilter === filter.value ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedFilter(filter.value)}
+                    >
+                      {filter.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
 
-          {/* Botão Publicar */}
-          {audioBlob && (
-            <Button 
-              onClick={uploadAudio} 
-              disabled={isUploading || !description.trim()}
-              className="w-full"
-            >
-              {isUploading ? 'Publicando...' : 'Publicar Áudio'}
-            </Button>
+              <div className="space-y-2">
+                <label htmlFor="description" className="text-sm font-medium">
+                  Descrição (use #hashtags)
+                </label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Descreva seu áudio... Use #hashtags para categorizar"
+                  className="min-h-[80px]"
+                />
+              </div>
+
+              <div className="flex space-x-2">
+                <Button 
+                  onClick={uploadAudio} 
+                  disabled={isUploading || !description.trim()}
+                  className="flex-1"
+                >
+                  {isUploading ? 'Publicando...' : 'Publicar'}
+                </Button>
+                <Button 
+                  onClick={onClose} 
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </>
           )}
         </div>
       </DialogContent>

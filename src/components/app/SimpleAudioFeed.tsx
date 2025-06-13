@@ -30,7 +30,7 @@ const SimpleAudioFeed = () => {
         .from('audio_posts')
         .select(`
           *,
-          profiles:user_id (
+          profiles!audio_posts_user_id_fkey (
             username,
             avatar_url
           ),

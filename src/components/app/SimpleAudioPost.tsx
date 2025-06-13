@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -17,9 +16,9 @@ interface AudioPost {
   user_id: string;
   likes_count: number;
   profiles?: {
-    username: string;
+    username?: string;
     avatar_url?: string;
-  };
+  } | null;
   likes?: Array<{ user_id: string }>;
 }
 
@@ -36,7 +35,7 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  useState(() => {
+  useEffect(() => {
     if (user && post.likes) {
       setIsLiked(post.likes.some(like => like.user_id === user.id));
     }

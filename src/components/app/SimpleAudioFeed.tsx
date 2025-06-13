@@ -5,6 +5,21 @@ import SimpleAudioPost from './SimpleAudioPost';
 import { Card, CardContent } from '@/components/ui/card';
 import { Mic } from 'lucide-react';
 
+interface AudioPost {
+  id: string;
+  description: string;
+  audio_url: string;
+  duration: number;
+  created_at: string;
+  user_id: string;
+  likes_count: number;
+  profiles?: {
+    username?: string;
+    avatar_url?: string;
+  } | null;
+  likes?: Array<{ user_id: string }>;
+}
+
 const SimpleAudioFeed = () => {
   const { data: audioPosts, isLoading, error, refetch } = useQuery({
     queryKey: ['audio-posts'],
@@ -32,9 +47,9 @@ const SimpleAudioFeed = () => {
       }
       
       console.log('Posts encontrados:', data);
-      return data;
+      return data as AudioPost[];
     },
-    refetchInterval: 30000, // Atualizar a cada 30 segundos
+    refetchInterval: 30000,
   });
 
   if (isLoading) {
@@ -84,7 +99,7 @@ const SimpleAudioFeed = () => {
 
   return (
     <div className="space-y-6">
-      {audioPosts.map((post) => (
+      {audioPosts?.map((post) => (
         <SimpleAudioPost key={post.id} post={post} />
       ))}
     </div>

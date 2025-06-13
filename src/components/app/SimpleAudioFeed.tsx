@@ -6,9 +6,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Mic } from 'lucide-react';
 
 const SimpleAudioFeed = () => {
-  const { data: audioPosts, isLoading, error } = useQuery({
+  const { data: audioPosts, isLoading, error, refetch } = useQuery({
     queryKey: ['audio-posts'],
     queryFn: async () => {
+      console.log('Buscando posts de áudio...');
+      
       const { data, error } = await supabase
         .from('audio_posts')
         .select(`
@@ -24,9 +26,15 @@ const SimpleAudioFeed = () => {
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao buscar posts:', error);
+        throw error;
+      }
+      
+      console.log('Posts encontrados:', data);
       return data;
     },
+    refetchInterval: 30000, // Atualizar a cada 30 segundos
   });
 
   if (isLoading) {
@@ -44,10 +52,17 @@ const SimpleAudioFeed = () => {
   }
 
   if (error) {
+    console.error('Erro no feed:', error);
     return (
       <Card>
         <CardContent className="p-6 text-center">
-          <p className="text-muted-foreground">Erro ao carregar áudios</p>
+          <p className="text-muted-foreground mb-4">Erro ao carregar áudios</p>
+          <button 
+            onClick={() => refetch()}
+            className="text-primary hover:underline"
+          >
+            Tentar novamente
+          </button>
         </CardContent>
       </Card>
     );

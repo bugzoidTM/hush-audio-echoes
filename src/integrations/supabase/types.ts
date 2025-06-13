@@ -115,6 +115,13 @@ export type Database = {
             referencedRelation: "audio_posts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_audio_posts_challenge_id"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "daily_challenges"
+            referencedColumns: ["id"]
+          },
         ]
       }
       daily_challenges: {
@@ -229,6 +236,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_likes_audio_id"
+            columns: ["audio_id"]
+            isOneToOne: false
+            referencedRelation: "audio_posts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "likes_audio_id_fkey"
             columns: ["audio_id"]

@@ -11,25 +11,25 @@ const SimpleAppHeader = () => {
 
   return (
     <>
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <header className="border-b bg-background">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <h1 className="text-2xl font-bold gradient-text">Shhhh</h1>
+            <h1 className="text-xl font-bold text-primary">Shhhh</h1>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             <Button
               onClick={() => setShowRecordModal(true)}
-              className="gradient-bg"
+              className="bg-primary hover:bg-primary/90"
               size="sm"
             >
               <Plus className="w-4 h-4 mr-2" />
               Gravar
             </Button>
             
-            <div className="flex items-center space-x-2 text-sm">
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
               <User className="w-4 h-4" />
-              <span>{user?.email}</span>
+              <span className="hidden sm:inline">{user?.email}</span>
             </div>
             
             <Button

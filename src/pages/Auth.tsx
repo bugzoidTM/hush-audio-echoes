@@ -38,15 +38,14 @@ const Auth = () => {
         description: error.message,
         variant: "destructive",
       });
+      setIsLoading(false);
     } else {
       toast({
         title: "Login realizado com sucesso!",
         description: "Redirecionando...",
       });
-      navigate('/app');
+      // O redirecionamento é feito automaticamente no signIn
     }
-
-    setIsLoading(false);
   };
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -58,7 +57,6 @@ const Auth = () => {
     const password = formData.get('password') as string;
     const confirmPassword = formData.get('confirmPassword') as string;
     const username = formData.get('username') as string;
-    const displayName = formData.get('displayName') as string;
 
     if (password !== confirmPassword) {
       toast({
@@ -70,7 +68,7 @@ const Auth = () => {
       return;
     }
 
-    const { error } = await signUp(email, password, username, displayName);
+    const { error } = await signUp(email, password, username);
 
     if (error) {
       toast({
@@ -138,15 +136,6 @@ const Auth = () => {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <label htmlFor="displayName">Nome de exibição</label>
-                  <Input
-                    id="displayName"
-                    name="displayName"
-                    placeholder="Como você quer aparecer"
-                    required
-                  />
-                </div>
                 <div className="space-y-2">
                   <label htmlFor="username">Nome de usuário</label>
                   <Input

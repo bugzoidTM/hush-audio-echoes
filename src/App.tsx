@@ -8,7 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 
 const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
-const UpdatedApp = lazy(() => import("./pages/UpdatedApp"));
+const SimpleApp = lazy(() => import("./pages/SimpleApp"));
 const Admin = lazy(() => import("./pages/Admin"));
 
 const queryClient = new QueryClient();
@@ -31,7 +31,7 @@ const AppWrapper = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/app" element={<UpdatedApp />} />
+              <Route path="/app" element={<SimpleApp />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

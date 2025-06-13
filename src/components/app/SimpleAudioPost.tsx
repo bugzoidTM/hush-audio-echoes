@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -125,7 +126,9 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
     }
   };
 
-  const renderDescription = (text: string) => {
+  const renderDescription = (text: string | null | undefined) => {
+    if (!text) return 'Sem descrição';
+    
     return text.split(/(\s+)/).map((word, index) => {
       if (word.startsWith('#')) {
         return (

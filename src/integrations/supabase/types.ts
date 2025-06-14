@@ -63,6 +63,7 @@ export type Database = {
           transcription: string | null
           updated_at: string
           user_id: string | null
+          voice_filter: string | null
         }
         Insert: {
           audio_url: string
@@ -81,6 +82,7 @@ export type Database = {
           transcription?: string | null
           updated_at?: string
           user_id?: string | null
+          voice_filter?: string | null
         }
         Update: {
           audio_url?: string
@@ -99,6 +101,7 @@ export type Database = {
           transcription?: string | null
           updated_at?: string
           user_id?: string | null
+          voice_filter?: string | null
         }
         Relationships: [
           {

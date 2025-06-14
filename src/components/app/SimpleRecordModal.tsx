@@ -1,45 +1,171 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Mic, Square, Play, Pause } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Mic, Square, Play, Pause, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SimpleRecordModalProps {
   open: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
+type VoiceFilter = 'normal' | 'robot' | 'helium' | 'deep' | 'echo' | 'whisper' | 'alien' | 'chipmunk';
+
+const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [description, setDescription] = useState('');
+  const [voiceFilter, setVoiceFilter] = useState<VoiceFilter>('normal');
   const [isUploading, setIsUploading] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [selectedFilter, setSelectedFilter] = useState<string>('normal');
+  const [duration, setDuration] = useState(0);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  
+  const chunksRef = useRef<Blob[]>([]);
+
   const { user } = useAuth();
   const { toast } = useToast();
 
   const voiceFilters = [
-    { value: 'normal', label: 'Normal', icon: '🎤' },
-    { value: 'robot', label: 'Robô', icon: '🤖' },
-    { value: 'helium', label: 'Hélio', icon: '🎈' },
-    { value: 'deep', label: 'Grave', icon: '🗣️' },
-    { value: 'echo', label: 'Eco', icon: '🔊' },
-    { value: 'whisper', label: 'Sussurro', icon: '🤫' },
-    { value: 'alien', label: 'Alien', icon: '👽' },
-    { value: 'chipmunk', label: 'Esquilo', icon: '🐿️' }
+    { value: 'normal', label: 'Normal' },
+    { value: 'robot', label: 'Robô' },
+    { value: 'helium', label: 'Hélio' },
+    { value: 'deep', label: 'Grave' },
+    { value: 'echo', label: 'Eco' },
+    { value: 'whisper', label: 'Sussurro' },
+    { value: 'alien', label: 'Alien' },
+    { value: 'chipmunk', label: 'Esquilo' }
   ];
+
+  // Apply voice filter to audio blob
+  const applyVoiceFilter = useCallback(async (blob: Blob, filter: VoiceFilter): Promise<Blob> => {
+    if (filter === 'normal') return blob;
+
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const arrayBuffer = await blob.arrayBuffer();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      
+      // Create a new buffer for the filtered audio
+      const filteredBuffer = audioContext.createBuffer(
+        audioBuffer.numberOfChannels,
+        audioBuffer.length,
+        audioBuffer.sampleRate
+      );
+
+      // Apply different filters based on selection
+      for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+        const inputData = audioBuffer.getChannelData(channel);
+        const outputData = filteredBuffer.getChannelData(channel);
+
+        for (let i = 0; i < inputData.length; i++) {
+          let sample = inputData[i];
+
+          switch (filter) {
+            case 'robot':
+              // Simple distortion effect
+              sample = Math.sign(sample) * Math.pow(Math.abs(sample), 0.5);
+              if (i % 100 < 50) sample *= 0.7;
+              break;
+            
+            case 'helium':
+              // Pitch shift up (simplified)
+              if (i < inputData.length - 1) {
+                sample = (sample + inputData[i + 1]) * 0.8;
+              }
+              break;
+            
+            case 'deep':
+              // Lower pitch effect
+              sample *= 1.2;
+              if (i % 3 === 0 && i > 0) {
+                sample = (sample + inputData[i - 1]) * 0.6;
+              }
+              break;
+            
+            case 'echo':
+              // Simple echo effect
+              if (i > audioBuffer.sampleRate * 0.2) {
+                const echoIndex = Math.floor(i - audioBuffer.sampleRate * 0.2);
+                sample += inputData[echoIndex] * 0.3;
+              }
+              break;
+            
+            case 'whisper':
+              // Quiet with noise reduction
+              sample *= 0.4;
+              sample += (Math.random() - 0.5) * 0.02;
+              break;
+            
+            case 'alien':
+              // Frequency modulation
+              const mod = Math.sin(i * 0.01) * 0.5;
+              sample = sample * (1 + mod);
+              break;
+            
+            case 'chipmunk':
+              // High pitch (simplified)
+              sample *= 0.7;
+              if (i % 2 === 0 && i < inputData.length - 2) {
+                sample = inputData[i + 2] * 0.9;
+              }
+              break;
+          }
+
+          // Prevent clipping
+          outputData[i] = Math.max(-1, Math.min(1, sample));
+        }
+      }
+
+      // Convert back to blob
+      const length = filteredBuffer.length * filteredBuffer.numberOfChannels * 2 + 44;
+      const buffer = new ArrayBuffer(length);
+      const view = new DataView(buffer);
+      
+      // Write WAV header
+      const writeString = (offset: number, string: string) => {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      };
+      
+      writeString(0, 'RIFF');
+      view.setUint32(4, length - 8, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, filteredBuffer.numberOfChannels, true);
+      view.setUint32(24, filteredBuffer.sampleRate, true);
+      view.setUint32(28, filteredBuffer.sampleRate * filteredBuffer.numberOfChannels * 2, true);
+      view.setUint16(32, filteredBuffer.numberOfChannels * 2, true);
+      view.setUint16(34, 16, true);
+      writeString(36, 'data');
+      view.setUint32(40, length - 44, true);
+      
+      let offset = 44;
+      for (let i = 0; i < filteredBuffer.length; i++) {
+        for (let channel = 0; channel < filteredBuffer.numberOfChannels; channel++) {
+          const sample = Math.max(-1, Math.min(1, filteredBuffer.getChannelData(channel)[i]));
+          view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+          offset += 2;
+        }
+      }
+      
+      return new Blob([buffer], { type: 'audio/wav' });
+    } catch (error) {
+      console.error('Erro ao aplicar filtro de voz:', error);
+      return blob; // Return original if filter fails
+    }
+  }, []);
 
   const startRecording = async () => {
     try {
@@ -48,39 +174,39 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
           echoCancellation: true,
           noiseSuppression: true,
           sampleRate: 44100
-        }
+        } 
       });
+      
+      chunksRef.current = [];
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
       
       mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
       
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+          chunksRef.current.push(event.data);
         }
       };
       
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        setAudioBlob(audioBlob);
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        
+        // Apply voice filter before setting the audio blob
+        const filteredBlob = await applyVoiceFilter(blob, voiceFilter);
+        setAudioBlob(filteredBlob);
+        
         stream.getTracks().forEach(track => track.stop());
       };
       
       mediaRecorder.start();
       setIsRecording(true);
-      setRecordingTime(0);
+      setDuration(0);
       
+      // Start timer
       timerRef.current = setInterval(() => {
-        setRecordingTime(prev => {
-          if (prev >= 60) {
-            stopRecording();
-            return 60;
-          }
-          return prev + 1;
-        });
+        setDuration(prev => prev + 1);
       }, 1000);
       
     } catch (error) {
@@ -97,6 +223,7 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -104,153 +231,21 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
     }
   };
 
-  const applyVoiceFilter = async (audioBlob: Blob, filter: string): Promise<Blob> => {
-    if (filter === 'normal') return audioBlob;
-    
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      
-      const offlineContext = new OfflineAudioContext(
-        audioBuffer.numberOfChannels,
-        audioBuffer.length,
-        audioBuffer.sampleRate
-      );
-      
-      const source = offlineContext.createBufferSource();
-      source.buffer = audioBuffer;
-      
-      let filterNode;
-      
-      switch (filter) {
-        case 'robot':
-          // Bandpass filter for robotic voice
-          filterNode = offlineContext.createBiquadFilter();
-          filterNode.type = 'bandpass';
-          filterNode.frequency.value = 1000;
-          filterNode.Q.value = 15;
-          break;
-        case 'helium':
-          // High-pass filter for helium effect  
-          filterNode = offlineContext.createBiquadFilter();
-          filterNode.type = 'highpass';
-          filterNode.frequency.value = 2000;
-          break;
-        case 'deep':
-          // Low-pass filter for deep voice
-          filterNode = offlineContext.createBiquadFilter();
-          filterNode.type = 'lowpass';
-          filterNode.frequency.value = 500;
-          break;
-        case 'echo':
-          // Delay for echo effect
-          filterNode = offlineContext.createDelay();
-          filterNode.delayTime.value = 0.3;
-          const feedback = offlineContext.createGain();
-          feedback.gain.value = 0.4;
-          filterNode.connect(feedback);
-          feedback.connect(filterNode);
-          break;
-        case 'whisper':
-          // Low gain and high-pass for whisper
-          filterNode = offlineContext.createGain();
-          filterNode.gain.value = 0.3;
-          break;
-        case 'alien':
-          // Ring modulator effect
-          filterNode = offlineContext.createBiquadFilter();
-          filterNode.type = 'bandpass';
-          filterNode.frequency.value = 800;
-          filterNode.Q.value = 20;
-          break;
-        case 'chipmunk':
-          // High frequency boost
-          filterNode = offlineContext.createBiquadFilter();
-          filterNode.type = 'peaking';
-          filterNode.frequency.value = 3000;
-          filterNode.gain.value = 15;
-          break;
-        default:
-          filterNode = offlineContext.createGain();
-      }
-      
-      source.connect(filterNode);
-      filterNode.connect(offlineContext.destination);
-      source.start();
-      
-      const renderedBuffer = await offlineContext.startRendering();
-      
-      const wavBlob = audioBufferToWav(renderedBuffer);
-      return wavBlob;
-    } catch (error) {
-      console.error('Erro ao aplicar filtro:', error);
-      toast({
-        title: "Aviso",
-        description: "Não foi possível aplicar o filtro, usando áudio original",
-        variant: "default"
-      });
-      return audioBlob;
-    }
-  };
-
-  const audioBufferToWav = (buffer: AudioBuffer): Blob => {
-    const length = buffer.length * buffer.numberOfChannels * 2 + 44;
-    const arrayBuffer = new ArrayBuffer(length);
-    const view = new DataView(arrayBuffer);
-    
-    const writeString = (offset: number, string: string) => {
-      for (let i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
-      }
-    };
-    
-    writeString(0, 'RIFF');
-    view.setUint32(4, length - 8, true);
-    writeString(8, 'WAVE');
-    writeString(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, buffer.numberOfChannels, true);
-    view.setUint32(24, buffer.sampleRate, true);
-    view.setUint32(28, buffer.sampleRate * buffer.numberOfChannels * 2, true);
-    view.setUint16(32, buffer.numberOfChannels * 2, true);
-    view.setUint16(34, 16, true);
-    writeString(36, 'data');
-    view.setUint32(40, length - 44, true);
-    
-    let offset = 44;
-    for (let i = 0; i < buffer.length; i++) {
-      for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-        const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[i]));
-        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-        offset += 2;
-      }
-    }
-    
-    return new Blob([arrayBuffer], { type: 'audio/wav' });
-  };
-
   const playAudio = () => {
-    if (audioBlob) {
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
+    if (audioBlob && !isPlaying) {
+      const audio = new Audio(URL.createObjectURL(audioBlob));
       audioRef.current = audio;
       
       audio.onended = () => {
         setIsPlaying(false);
-        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
       };
       
       audio.play();
       setIsPlaying(true);
-    }
-  };
-
-  const stopAudio = () => {
-    if (audioRef.current) {
+    } else if (audioRef.current && isPlaying) {
       audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+      audioRef.current = null;
       setIsPlaying(false);
     }
   };
@@ -261,47 +256,42 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
     setIsUploading(true);
     
     try {
-      const processedBlob = await applyVoiceFilter(audioBlob, selectedFilter);
+      // Upload to storage
       const fileName = `${user.id}/${Date.now()}.webm`;
-      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('audio-files')
-        .upload(fileName, processedBlob, {
-          contentType: 'audio/webm'
-        });
+        .upload(fileName, audioBlob);
 
       if (uploadError) throw uploadError;
 
+      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('audio-files')
         .getPublicUrl(fileName);
 
-      const { error: insertError } = await supabase
+      // Save to database
+      const { error: dbError } = await supabase
         .from('audio_posts')
         .insert({
           user_id: user.id,
-          description: description,
+          description: description.trim() || null,
           audio_url: publicUrl,
-          duration: recordingTime,
-          voice_filter: selectedFilter,
-          status: 'active'
+          duration: duration,
+          voice_filter: voiceFilter
         });
 
-      if (insertError) throw insertError;
+      if (dbError) throw dbError;
 
       toast({
         title: "Sucesso!",
-        description: `Áudio publicado com filtro "${voiceFilters.find(f => f.value === selectedFilter)?.label}"`,
+        description: "Áudio publicado com sucesso",
       });
 
-      onClose();
-      setAudioBlob(null);
-      setDescription('');
-      setRecordingTime(0);
-      setSelectedFilter('normal');
+      onSuccess?.();
+      handleClose();
       
     } catch (error) {
-      console.error('Erro ao enviar áudio:', error);
+      console.error('Erro ao fazer upload:', error);
       toast({
         title: "Erro",
         description: "Não foi possível publicar o áudio",
@@ -312,51 +302,104 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
     }
   };
 
+  const handleClose = () => {
+    // Cleanup
+    if (isRecording) {
+      stopRecording();
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    
+    setAudioBlob(null);
+    setDescription('');
+    setVoiceFilter('normal');
+    setIsPlaying(false);
+    setDuration(0);
+    chunksRef.current = [];
+    
+    onClose();
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, []);
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Gravar Áudio</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-6">
-          <div className="text-center">
-            <div className="mb-4">
-              {isRecording && (
-                <div className="text-lg font-mono text-red-500">
-                  {formatTime(recordingTime)} / 1:00
-                </div>
-              )}
+        <div className="space-y-4">
+          {/* Voice Filter Selection */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Filtro de Voz</label>
+            <Select value={voiceFilter} onValueChange={(value: VoiceFilter) => setVoiceFilter(value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {voiceFilters.map((filter) => (
+                  <SelectItem key={filter.value} value={filter.value}>
+                    {filter.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Recording Controls */}
+          <div className="flex flex-col items-center space-y-4">
+            <div className="text-2xl font-mono">
+              {formatTime(duration)}
             </div>
             
-            <div className="flex justify-center space-x-4">
+            <div className="flex space-x-4">
               {!isRecording ? (
                 <Button
                   onClick={startRecording}
-                  className="bg-red-500 hover:bg-red-600 rounded-full w-16 h-16"
+                  className="rounded-full w-16 h-16"
+                  disabled={isUploading}
                 >
                   <Mic className="w-6 h-6" />
                 </Button>
               ) : (
                 <Button
                   onClick={stopRecording}
-                  className="bg-gray-500 hover:bg-gray-600 rounded-full w-16 h-16"
+                  variant="destructive"
+                  className="rounded-full w-16 h-16"
                 >
                   <Square className="w-6 h-6" />
                 </Button>
               )}
               
-              {audioBlob && !isRecording && (
+              {audioBlob && (
                 <Button
-                  onClick={isPlaying ? stopAudio : playAudio}
+                  onClick={playAudio}
                   variant="outline"
                   className="rounded-full w-16 h-16"
+                  disabled={isRecording || isUploading}
                 >
                   {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
                 </Button>
@@ -364,66 +407,36 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
             </div>
           </div>
 
-          {audioBlob && (
-            <>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Filtro de Voz</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {voiceFilters.map((filter) => (
-                    <Button
-                      key={filter.value}
-                      variant={selectedFilter === filter.value ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedFilter(filter.value)}
-                      className="flex items-center space-x-2 h-auto p-3"
-                    >
-                      <span className="text-lg">{filter.icon}</span>
-                      <div className="text-left">
-                        <div className="font-medium text-xs">{filter.label}</div>
-                      </div>
-                    </Button>
-                  ))}
-                </div>
-                {selectedFilter !== 'normal' && (
-                  <div className="mt-2 p-2 bg-muted rounded text-center">
-                    <span className="text-sm text-muted-foreground">
-                      Filtro selecionado: <strong>{voiceFilters.find(f => f.value === selectedFilter)?.label}</strong>
-                    </span>
-                  </div>
-                )}
-              </div>
+          {/* Description */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Descrição (opcional)</label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Descreva seu áudio..."
+              maxLength={500}
+              disabled={isRecording || isUploading}
+            />
+          </div>
 
-              <div className="space-y-2">
-                <label htmlFor="description" className="text-sm font-medium">
-                  Descrição (use #hashtags)
-                </label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Descreva seu áudio... Use #hashtags para categorizar"
-                  className="min-h-[80px]"
-                />
-              </div>
-
-              <div className="flex space-x-2">
-                <Button 
-                  onClick={uploadAudio} 
-                  disabled={isUploading || !description.trim()}
-                  className="flex-1"
-                >
-                  {isUploading ? 'Publicando...' : 'Publicar'}
-                </Button>
-                <Button 
-                  onClick={onClose} 
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </>
-          )}
+          {/* Upload Button */}
+          <Button
+            onClick={uploadAudio}
+            disabled={!audioBlob || isRecording || isUploading}
+            className="w-full"
+          >
+            {isUploading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                Publicando...
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4 mr-2" />
+                Publicar Áudio
+              </>
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

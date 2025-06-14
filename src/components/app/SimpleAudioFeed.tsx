@@ -11,6 +11,7 @@ interface AudioPost {
   audio_url: string;
   duration: number;
   created_at: string;
+  expires_at: string; // Add expires_at to the interface
   user_id: string;
   likes_count: number;
   profiles?: {

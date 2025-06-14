@@ -29,7 +29,14 @@ const Index = () => {
       {/* Header */}
       <header className="border-b bg-background/95 backdrop-blur">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">Shhhh</h1>
+          <div className="flex items-center space-x-2">
+            <img 
+              src="/lovable-uploads/52e262e1-3762-429d-99a2-081e0ac14f52.png" 
+              alt="Shhhh Logo" 
+              className="w-8 h-8"
+            />
+            <h1 className="text-2xl font-bold text-primary">Shhhh</h1>
+          </div>
           <Button onClick={() => navigate('/auth')} variant="outline">
             Entrar
           </Button>
@@ -129,8 +136,16 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="bg-background border-t py-8">
-        <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>&copy; 2024 Shhhh. Sua voz, sua história.</p>
+        <div className="container mx-auto px-4 text-center">
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <img 
+              src="/lovable-uploads/52e262e1-3762-429d-99a2-081e0ac14f52.png" 
+              alt="Shhhh Logo" 
+              className="w-6 h-6"
+            />
+            <span className="font-bold text-primary">Shhhh</span>
+          </div>
+          <p className="text-muted-foreground">&copy; 2024 Shhhh. Sua voz, sua história.</p>
         </div>
       </footer>
     </div>

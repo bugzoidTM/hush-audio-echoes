@@ -1,4 +1,3 @@
-
 import { Mic, Instagram, Twitter, Youtube } from "lucide-react";
 
 const Footer = () => {
@@ -9,7 +8,7 @@ const Footer = () => {
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
               <img 
-                src="/lovable-uploads/205b5735-3f33-453a-a025-eaffc0a2fba6.png" 
+                src="/lovable-uploads/52e262e1-3762-429d-99a2-081e0ac14f52.png" 
                 alt="Shhhh Logo" 
                 className="w-8 h-8"
               />

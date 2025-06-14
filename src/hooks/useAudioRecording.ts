@@ -15,6 +15,7 @@ export const useAudioRecording = () => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const voiceFilterRef = useRef<VoiceFilter>('normal');
 
   const { toast } = useToast();
 
@@ -47,14 +48,14 @@ export const useAudioRecording = () => {
         }
       };
       
-      mediaRecorder.onstop = async (voiceFilter: VoiceFilter) => {
+      mediaRecorder.onstop = async () => {
         console.log('⏹️ Gravação finalizada, processando...');
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
         console.log('📦 Blob criado:', blob.size, 'bytes');
         
         // Apply voice filter before setting the audio blob
-        const filteredBlob = await applyVoiceFilter(blob, voiceFilter);
-        console.log('🎛️ Filtro aplicado:', voiceFilter);
+        const filteredBlob = await applyVoiceFilter(blob, voiceFilterRef.current);
+        console.log('🎛️ Filtro aplicado:', voiceFilterRef.current);
         setAudioBlob(filteredBlob);
         
         // Cleanup stream
@@ -106,14 +107,10 @@ export const useAudioRecording = () => {
   const stopRecording = useCallback((voiceFilter: VoiceFilter = 'normal') => {
     console.log('🛑 Parando gravação...');
     
+    // Store the voice filter in ref so it can be accessed by the onstop handler
+    voiceFilterRef.current = voiceFilter;
+    
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      // We need to pass the voice filter to the onstop handler
-      const originalOnStop = mediaRecorderRef.current.onstop;
-      mediaRecorderRef.current.onstop = () => {
-        if (originalOnStop) {
-          (originalOnStop as any)(voiceFilter);
-        }
-      };
       mediaRecorderRef.current.stop();
     }
     
@@ -177,6 +174,7 @@ export const useAudioRecording = () => {
     setIsPlaying(false);
     setDuration(0);
     setRecordingStartTime(0);
+    voiceFilterRef.current = 'normal';
     chunksRef.current = [];
   };
 

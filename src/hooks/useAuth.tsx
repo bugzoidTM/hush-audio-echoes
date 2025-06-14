@@ -136,10 +136,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       cleanupAuthState();
       await supabase.auth.signOut({ scope: 'global' });
-      window.location.href = '/auth';
+      window.location.href = '/';
     } catch (error) {
       console.error('Erro no logout:', error);
-      window.location.href = '/auth';
+      window.location.href = '/';
     }
   };
 

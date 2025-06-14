@@ -1,8 +1,8 @@
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, Send, Bookmark } from 'lucide-react';
-import { useState } from 'react';
+import { Heart, MessageCircle, Bookmark } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -16,6 +16,7 @@ interface AudioPost {
   audio_url: string;
   duration: number;
   created_at: string;
+  expires_at: string;
   user_id: string;
   likes_count: number;
   voice_filter?: string;
@@ -38,6 +39,42 @@ const InstagramAudioPost = ({ post }: InstagramAudioPostProps) => {
   );
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [isSaved, setIsSaved] = useState(false);
+  const [timeLeft, setTimeLeft] = useState('');
+
+  // Função para calcular tempo restante
+  const calculateTimeLeft = () => {
+    const now = new Date().getTime();
+    const expiresAt = new Date(post.expires_at).getTime();
+    const difference = expiresAt - now;
+
+    if (difference > 0) {
+      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+      if (hours > 0) {
+        return `${hours}h ${minutes}m restantes`;
+      } else if (minutes > 0) {
+        return `${minutes}m ${seconds}s restantes`;
+      } else {
+        return `${seconds}s restantes`;
+      }
+    } else {
+      return 'Expirado';
+    }
+  };
+
+  // Atualizar contador a cada segundo
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 1000);
+
+    // Calcular inicial
+    setTimeLeft(calculateTimeLeft());
+
+    return () => clearInterval(timer);
+  }, [post.expires_at]);
 
   const handleLike = async () => {
     if (!user) return;
@@ -84,28 +121,22 @@ const InstagramAudioPost = ({ post }: InstagramAudioPostProps) => {
     });
   };
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: 'Áudio no Shhhh',
-        text: post.description || 'Confira este áudio efêmero!',
-        url: window.location.href,
-      });
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast({
-        title: "Link copiado!",
-        description: "O link foi copiado para a área de transferência",
-      });
-    }
-  };
-
   const handleSave = () => {
     setIsSaved(!isSaved);
     toast({
       title: isSaved ? "Removido dos salvos" : "Salvo",
       description: isSaved ? "Áudio removido dos salvos" : "Áudio salvo com sucesso",
     });
+  };
+
+  const getVoiceFilterName = (filter?: string) => {
+    switch (filter) {
+      case 'robot': return 'Robô';
+      case 'echo': return 'Eco';
+      case 'deep': return 'Grave';
+      case 'high': return 'Agudo';
+      default: return 'Normal';
+    }
   };
 
   return (
@@ -146,15 +177,6 @@ const InstagramAudioPost = ({ post }: InstagramAudioPostProps) => {
             >
               <MessageCircle className="w-6 h-6" />
             </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleShare}
-              className="p-0 h-auto"
-            >
-              <Send className="w-6 h-6" />
-            </Button>
           </div>
           
           <Button
@@ -186,6 +208,12 @@ const InstagramAudioPost = ({ post }: InstagramAudioPostProps) => {
         >
           Adicionar comentário...
         </button>
+
+        {/* Rodapé com contador e filtro */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-muted">
+          <span>Filtro: {getVoiceFilterName(post.voice_filter)}</span>
+          <span className={timeLeft === 'Expirado' ? 'text-red-500' : ''}>{timeLeft}</span>
+        </div>
       </CardContent>
     </Card>
   );

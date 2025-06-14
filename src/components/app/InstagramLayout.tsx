@@ -1,92 +1,122 @@
 
-import { useAuth } from '@/hooks/useAuth';
+import { ReactNode, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Home, Search, Compass, Heart, PlusSquare, User, LogOut } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import SimpleRecordModal from './SimpleRecordModal';
+import { Separator } from '@/components/ui/separator';
+import { 
+  Home, 
+  Search, 
+  Compass, 
+  Heart, 
+  PlusSquare, 
+  User,
+  LogOut
+} from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import UserSuggestions from './UserSuggestions';
+import RecordAudioModal from './RecordAudioModal';
 
 interface InstagramLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 const InstagramLayout = ({ children }: InstagramLayoutProps) => {
   const { user, signOut } = useAuth();
   const [showRecordModal, setShowRecordModal] = useState(false);
-  const location = useLocation();
+  const [userProfile, setUserProfile] = useState<any>(null);
 
-  const menuItems = [
-    { icon: Home, label: 'Página inicial', path: '/app', active: location.pathname === '/app' },
-    { icon: Search, label: 'Pesquisa', path: '/search', active: false },
-    { icon: Compass, label: 'Explorar', path: '/explore', active: false },
-    { icon: Heart, label: 'Notificações', path: '/notifications', active: false },
-    { icon: PlusSquare, label: 'Criar', path: '#', active: false, action: () => setShowRecordModal(true) },
-    { icon: User, label: 'Perfil', path: '/profile', active: false },
-  ];
+  useEffect(() => {
+    if (user) {
+      const fetchProfile = async () => {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        setUserProfile(data);
+      };
+      
+      fetchProfile();
+    }
+  }, [user]);
+
+  const displayName = userProfile?.display_name || userProfile?.username || 'Usuário';
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Barra Lateral Esquerda */}
-      <div className="w-64 border-r border-border bg-background fixed h-full left-0 top-0 z-10">
+      {/* Sidebar Esquerda */}
+      <div className="w-64 border-r border-border fixed left-0 top-0 h-full bg-background z-10">
         <div className="p-6">
-          <h1 className="text-2xl font-bold text-primary mb-8">Shhhh</h1>
-          
-          <nav className="space-y-1">
-            {menuItems.map((item) => (
-              <div key={item.label}>
-                {item.action ? (
-                  <Button
-                    variant="ghost"
-                    className={`w-full justify-start text-left px-3 py-3 h-auto ${
-                      item.active ? 'font-bold' : 'font-normal'
-                    }`}
-                    onClick={item.action}
-                  >
-                    <item.icon className="w-6 h-6 mr-4" />
-                    <span className="text-base">{item.label}</span>
-                  </Button>
-                ) : (
-                  <Link to={item.path}>
-                    <Button
-                      variant="ghost"
-                      className={`w-full justify-start text-left px-3 py-3 h-auto ${
-                        item.active ? 'font-bold' : 'font-normal'
-                      }`}
-                    >
-                      <item.icon className="w-6 h-6 mr-4" />
-                      <span className="text-base">{item.label}</span>
-                    </Button>
-                  </Link>
-                )}
-              </div>
-            ))}
-          </nav>
-        </div>
+          {/* Logo */}
+          <div className="mb-8">
+            <img 
+              src="/lovable-uploads/205b5735-3f33-453a-a025-eaffc0a2fba6.png" 
+              alt="SHHHH Logo" 
+              className="h-8 w-auto"
+            />
+          </div>
 
-        {/* Perfil na parte inferior */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-border">
-          <div className="flex items-center space-x-3 mb-4">
-            <Avatar className="w-10 h-10">
-              <AvatarImage src="" />
-              <AvatarFallback>
-                {user?.email?.[0]?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user?.email}</p>
+          {/* Menu de Navegação */}
+          <nav className="space-y-4">
+            <Button variant="ghost" className="w-full justify-start font-semibold">
+              <Home className="w-6 h-6 mr-3" />
+              Página inicial
+            </Button>
+            
+            <Button variant="ghost" className="w-full justify-start">
+              <Search className="w-6 h-6 mr-3" />
+              Pesquisa
+            </Button>
+            
+            <Button variant="ghost" className="w-full justify-start">
+              <Compass className="w-6 h-6 mr-3" />
+              Explorar
+            </Button>
+            
+            <Button variant="ghost" className="w-full justify-start">
+              <Heart className="w-6 h-6 mr-3" />
+              Notificações
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start"
+              onClick={() => setShowRecordModal(true)}
+            >
+              <PlusSquare className="w-6 h-6 mr-3" />
+              Criar
+            </Button>
+            
+            <Button variant="ghost" className="w-full justify-start">
+              <User className="w-6 h-6 mr-3" />
+              Perfil
+            </Button>
+          </nav>
+
+          {/* Usuário Logado */}
+          <div className="absolute bottom-6 left-6 right-6">
+            <div className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted cursor-pointer">
+              <Avatar className="w-10 h-10">
+                <AvatarImage src={userProfile?.avatar_url} />
+                <AvatarFallback>
+                  {displayName[0]?.toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{displayName}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={signOut}
+                className="w-8 h-8"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
           </div>
-          <Button
-            onClick={signOut}
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Sair
-          </Button>
         </div>
       </div>
 
@@ -94,57 +124,55 @@ const InstagramLayout = ({ children }: InstagramLayoutProps) => {
       <div className="flex-1 ml-64">
         <div className="max-w-6xl mx-auto flex">
           {/* Feed Central */}
-          <div className="flex-1 max-w-2xl mx-auto px-4 py-6">
+          <div className="flex-1 max-w-xl mx-auto">
             {children}
           </div>
 
-          {/* Painel Direito */}
-          <div className="w-80 p-6 border-l border-border">
-            {/* Perfil Logado */}
-            <div className="mb-6">
-              <div className="flex items-center space-x-3 mb-4">
+          {/* Sidebar Direita */}
+          <div className="w-80 p-6 sticky top-0 h-screen overflow-y-auto">
+            <div className="space-y-6">
+              {/* Perfil do Usuário */}
+              <div className="flex items-center space-x-3">
                 <Avatar className="w-14 h-14">
-                  <AvatarImage src="" />
-                  <AvatarFallback className="text-lg">
-                    {user?.email?.[0]?.toUpperCase() || 'U'}
+                  <AvatarImage src={userProfile?.avatar_url} />
+                  <AvatarFallback>
+                    {displayName[0]?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1">
-                  <p className="font-semibold">{user?.email}</p>
-                  <p className="text-sm text-muted-foreground">Seu perfil</p>
+                <div>
+                  <p className="font-semibold">{displayName}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {userProfile?.bio || 'Compartilhando áudios efêmeros'}
+                  </p>
                 </div>
               </div>
-            </div>
 
-            {/* Sugestões */}
-            <UserSuggestions />
+              <Separator />
 
-            {/* Rodapé */}
-            <div className="mt-8 pt-6 border-t border-border">
+              {/* Sugestões */}
+              <UserSuggestions />
+
+              <Separator />
+
+              {/* Rodapé */}
               <div className="space-y-2 text-xs text-muted-foreground">
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-x-3 gap-y-1">
                   <a href="#" className="hover:underline">Sobre</a>
                   <a href="#" className="hover:underline">Ajuda</a>
                   <a href="#" className="hover:underline">Imprensa</a>
                   <a href="#" className="hover:underline">API</a>
-                  <a href="#" className="hover:underline">Carreiras</a>
-                </div>
-                <div className="flex flex-wrap gap-2">
                   <a href="#" className="hover:underline">Privacidade</a>
                   <a href="#" className="hover:underline">Termos</a>
-                  <a href="#" className="hover:underline">Localizações</a>
-                  <a href="#" className="hover:underline">Meta Verified</a>
                 </div>
-                <div className="pt-2">
-                  <p>© 2025 SHHHH FROM NUTEF</p>
-                </div>
+                <p className="pt-2">© 2025 SHHHH FROM NUTEF</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <SimpleRecordModal 
+      {/* Modal de Gravação */}
+      <RecordAudioModal 
         open={showRecordModal} 
         onClose={() => setShowRecordModal(false)} 
       />

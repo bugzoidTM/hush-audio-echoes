@@ -11,6 +11,7 @@ interface AudioPost {
   audio_url: string;
   duration: number;
   created_at: string;
+  expires_at: string;
   user_id: string;
   likes_count: number;
   voice_filter?: string;
@@ -30,7 +31,7 @@ const InstagramFeed = () => {
       try {
         const { data: postsData, error: postsError } = await supabase
           .from('audio_posts')
-          .select('*')
+          .select('*, expires_at')
           .eq('status', 'active')
           .order('created_at', { ascending: false });
 

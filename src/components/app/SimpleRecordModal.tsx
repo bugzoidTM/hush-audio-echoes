@@ -30,10 +30,29 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const voiceFilters = [
+    { value: 'normal', label: 'Normal', icon: '🎤' },
+    { value: 'robot', label: 'Robô', icon: '🤖' },
+    { value: 'helium', label: 'Hélio', icon: '🎈' },
+    { value: 'deep', label: 'Grave', icon: '🗣️' },
+    { value: 'echo', label: 'Eco', icon: '🔊' },
+    { value: 'whisper', label: 'Sussurro', icon: '🤫' },
+    { value: 'alien', label: 'Alien', icon: '👽' },
+    { value: 'chipmunk', label: 'Esquilo', icon: '🐿️' }
+  ];
+
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        }
+      });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
       
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -89,7 +108,7 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
     if (filter === 'normal') return audioBlob;
     
     try {
-      const audioContext = new AudioContext();
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const arrayBuffer = await audioBlob.arrayBuffer();
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
       
@@ -106,23 +125,51 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
       
       switch (filter) {
         case 'robot':
+          // Bandpass filter for robotic voice
           filterNode = offlineContext.createBiquadFilter();
           filterNode.type = 'bandpass';
           filterNode.frequency.value = 1000;
+          filterNode.Q.value = 15;
           break;
-        case 'deep':
-          filterNode = offlineContext.createBiquadFilter();
-          filterNode.type = 'lowpass';
-          filterNode.frequency.value = 500;
-          break;
-        case 'high':
+        case 'helium':
+          // High-pass filter for helium effect  
           filterNode = offlineContext.createBiquadFilter();
           filterNode.type = 'highpass';
           filterNode.frequency.value = 2000;
           break;
+        case 'deep':
+          // Low-pass filter for deep voice
+          filterNode = offlineContext.createBiquadFilter();
+          filterNode.type = 'lowpass';
+          filterNode.frequency.value = 500;
+          break;
         case 'echo':
+          // Delay for echo effect
           filterNode = offlineContext.createDelay();
           filterNode.delayTime.value = 0.3;
+          const feedback = offlineContext.createGain();
+          feedback.gain.value = 0.4;
+          filterNode.connect(feedback);
+          feedback.connect(filterNode);
+          break;
+        case 'whisper':
+          // Low gain and high-pass for whisper
+          filterNode = offlineContext.createGain();
+          filterNode.gain.value = 0.3;
+          break;
+        case 'alien':
+          // Ring modulator effect
+          filterNode = offlineContext.createBiquadFilter();
+          filterNode.type = 'bandpass';
+          filterNode.frequency.value = 800;
+          filterNode.Q.value = 20;
+          break;
+        case 'chipmunk':
+          // High frequency boost
+          filterNode = offlineContext.createBiquadFilter();
+          filterNode.type = 'peaking';
+          filterNode.frequency.value = 3000;
+          filterNode.gain.value = 15;
           break;
         default:
           filterNode = offlineContext.createGain();
@@ -138,6 +185,11 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
       return wavBlob;
     } catch (error) {
       console.error('Erro ao aplicar filtro:', error);
+      toast({
+        title: "Aviso",
+        description: "Não foi possível aplicar o filtro, usando áudio original",
+        variant: "default"
+      });
       return audioBlob;
     }
   };
@@ -231,6 +283,7 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
           description: description,
           audio_url: publicUrl,
           duration: recordingTime,
+          voice_filter: selectedFilter,
           status: 'active'
         });
 
@@ -238,7 +291,7 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
 
       toast({
         title: "Sucesso!",
-        description: "Áudio publicado com sucesso",
+        description: `Áudio publicado com filtro "${voiceFilters.find(f => f.value === selectedFilter)?.label}"`,
       });
 
       onClose();
@@ -315,24 +368,29 @@ const SimpleRecordModal = ({ open, onClose }: SimpleRecordModalProps) => {
             <>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Filtro de Voz</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: 'normal', label: 'Normal' },
-                    { value: 'robot', label: 'Robô' },
-                    { value: 'deep', label: 'Grave' },
-                    { value: 'high', label: 'Agudo' },
-                    { value: 'echo', label: 'Eco' }
-                  ].map((filter) => (
+                <div className="grid grid-cols-2 gap-2">
+                  {voiceFilters.map((filter) => (
                     <Button
                       key={filter.value}
                       variant={selectedFilter === filter.value ? "default" : "outline"}
                       size="sm"
                       onClick={() => setSelectedFilter(filter.value)}
+                      className="flex items-center space-x-2 h-auto p-3"
                     >
-                      {filter.label}
+                      <span className="text-lg">{filter.icon}</span>
+                      <div className="text-left">
+                        <div className="font-medium text-xs">{filter.label}</div>
+                      </div>
                     </Button>
                   ))}
                 </div>
+                {selectedFilter !== 'normal' && (
+                  <div className="mt-2 p-2 bg-muted rounded text-center">
+                    <span className="text-sm text-muted-foreground">
+                      Filtro selecionado: <strong>{voiceFilters.find(f => f.value === selectedFilter)?.label}</strong>
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">

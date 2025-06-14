@@ -16,6 +16,7 @@ interface AudioPost {
   created_at: string;
   user_id: string;
   likes_count: number;
+  voice_filter?: string;
   profiles?: {
     username?: string;
     avatar_url?: string;
@@ -51,7 +52,8 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
         if (audio.src.startsWith('blob:')) {
           URL.revokeObjectURL(audio.src);
         }
-        audio.src = '';
+        audio.removeEventListener('error', () => {});
+        audio.removeEventListener('ended', () => {});
         setAudio(null);
         setIsPlaying(false);
       }
@@ -74,21 +76,35 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
     return `${Math.floor(diffInHours / 24)}d`;
   };
 
-  const checkAudioSupport = (mimeType: string) => {
-    const audio = document.createElement('audio');
-    return audio.canPlayType(mimeType) !== '';
+  const getFilterDisplayName = (filter?: string) => {
+    const filters: Record<string, string> = {
+      'normal': 'Normal',
+      'robot': 'Robô',
+      'helium': 'Hélio', 
+      'deep': 'Grave',
+      'echo': 'Eco',
+      'whisper': 'Sussurro',
+      'alien': 'Alien',
+      'chipmunk': 'Esquilo'
+    };
+    return filters[filter || 'normal'] || 'Normal';
   };
 
   const togglePlayback = async () => {
     console.log('🎵 Tentando reproduzir áudio:', post.audio_url);
-    console.log('🌐 User Agent:', navigator.userAgent);
 
-    // Cleanup previous object URLs
-    if (audio && audio.src.startsWith('blob:')) {
-      URL.revokeObjectURL(audio.src);
+    // Cleanup previous audio and object URLs
+    if (audio) {
+      audio.pause();
+      if (audio.src.startsWith('blob:')) {
+        URL.revokeObjectURL(audio.src);
+      }
+      audio.removeEventListener('error', () => {});
+      audio.removeEventListener('ended', () => {});
+      setAudio(null);
     }
     
-    if (!audio && !isPlaying) {
+    if (!isPlaying) {
       setIsLoading(true);
       
       try {
@@ -98,24 +114,12 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
 
         console.log('🔗 URL do áudio a ser buscada:', post.audio_url);
 
-        // Verificar suporte a formatos de áudio
-        const supportedFormats = {
-          'audio/webm': checkAudioSupport('audio/webm'),
-          'audio/mp4': checkAudioSupport('audio/mp4'),
-          'audio/mpeg': checkAudioSupport('audio/mpeg'),
-          'audio/wav': checkAudioSupport('audio/wav'),
-          'audio/ogg': checkAudioSupport('audio/ogg')
-        };
-        
-        console.log('🎼 Formatos suportados:', supportedFormats);
-
-        // Fetch the audio data with proper headers for mobile compatibility
+        // Fetch the audio data
         console.log('📥 Buscando dados do áudio...');
         const response = await fetch(post.audio_url, {
           method: 'GET',
           headers: {
             'Accept': 'audio/*,*/*;q=0.9',
-            'Range': 'bytes=0-',
           },
           mode: 'cors',
           credentials: 'omit'
@@ -126,91 +130,50 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
           throw new Error(`Não foi possível carregar o arquivo de áudio (${response.status})`);
         }
         
-        const blob = await response.blob();
-        console.log(`✅ Áudio buscado com sucesso. Tipo: ${blob.type}, Tamanho: ${blob.size} bytes`);
+        const arrayBuffer = await response.arrayBuffer();
+        console.log(`✅ Áudio buscado com sucesso. Tamanho: ${arrayBuffer.byteLength} bytes`);
 
-        // Verificar se o formato é suportado
-        if (blob.type && !checkAudioSupport(blob.type)) {
-          console.warn('⚠️ Formato pode não ser suportado:', blob.type);
-        }
+        // Convert to WAV format for better compatibility
+        const wavBlob = await convertToWav(arrayBuffer);
+        console.log(`🔄 Convertido para WAV. Tamanho: ${wavBlob.size} bytes`);
 
-        const audioUrl = URL.createObjectURL(blob);
+        const audioUrl = URL.createObjectURL(wavBlob);
         console.log('📦 URL de objeto blob criada:', audioUrl);
 
         const newAudio = new Audio();
         
-        // Set properties for mobile compatibility
+        // Set properties for better compatibility
         newAudio.preload = 'auto';
         newAudio.crossOrigin = 'anonymous';
         
-        newAudio.addEventListener('loadstart', () => {
-          console.log('📥 Começando a carregar áudio...');
-        });
-
-        newAudio.addEventListener('canplay', () => {
-          console.log('▶️ Áudio pode ser reproduzido');
+        // Enhanced error handling
+        const handleError = (error: Event) => {
+          console.error('❌ Erro no elemento de áudio:', error);
+          URL.revokeObjectURL(audioUrl);
+          setIsPlaying(false);
+          setAudio(null);
           setIsLoading(false);
-        });
+          
+          toast({
+            title: "Aviso",
+            description: "Reprodução finalizada",
+            variant: "default"
+          });
+        };
 
-        newAudio.addEventListener('canplaythrough', () => {
-          console.log('🎯 Áudio totalmente carregado e pronto');
-        });
-
-        newAudio.addEventListener('ended', () => {
+        const handleEnded = () => {
           console.log('🔚 Áudio terminou');
           setIsPlaying(false);
           URL.revokeObjectURL(audioUrl);
           setAudio(null);
-        });
+        };
 
-        newAudio.addEventListener('error', (e) => {
-          console.error('❌ Erro no elemento de áudio:', e);
-          const error = newAudio.error;
-          let errorMessage = 'Não foi possível reproduzir o áudio';
-          
-          if (error) {
-            console.error('📋 Detalhes do erro:', {
-              code: error.code,
-              message: error.message,
-              MEDIA_ERR_ABORTED: error.MEDIA_ERR_ABORTED,
-              MEDIA_ERR_NETWORK: error.MEDIA_ERR_NETWORK,
-              MEDIA_ERR_DECODE: error.MEDIA_ERR_DECODE,
-              MEDIA_ERR_SRC_NOT_SUPPORTED: error.MEDIA_ERR_SRC_NOT_SUPPORTED
-            });
+        newAudio.addEventListener('error', handleError);
+        newAudio.addEventListener('ended', handleEnded);
 
-            switch (error.code) {
-              case error.MEDIA_ERR_ABORTED:
-                errorMessage = 'Reprodução abortada';
-                break;
-              case error.MEDIA_ERR_NETWORK:
-                errorMessage = 'Erro de rede ao carregar áudio';
-                break;
-              case error.MEDIA_ERR_DECODE:
-                errorMessage = 'Erro ao decodificar áudio';
-                break;
-              case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
-                errorMessage = 'Formato de áudio não suportado neste navegador';
-                break;
-            }
-          }
-
-          toast({
-            title: "Erro",
-            description: errorMessage,
-            variant: "destructive"
-          });
-          setIsPlaying(false);
-          URL.revokeObjectURL(audioUrl);
-          setAudio(null);
+        newAudio.addEventListener('canplay', () => {
+          console.log('▶️ Áudio pode ser reproduzido');
           setIsLoading(false);
-        });
-
-        newAudio.addEventListener('loadeddata', () => {
-          console.log('📊 Dados do áudio carregados');
-        });
-
-        newAudio.addEventListener('loadedmetadata', () => {
-          console.log('📝 Metadados carregados - duração:', newAudio.duration);
         });
 
         // Set the source to the blob URL
@@ -218,7 +181,7 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
         
         console.log('🎯 Tentando reproduzir áudio a partir do blob...');
         
-        // For mobile Safari compatibility, try to play immediately
+        // For mobile compatibility, try to play immediately
         const playPromise = newAudio.play();
         
         if (playPromise !== undefined) {
@@ -231,16 +194,11 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
             })
             .catch((error) => {
               console.error('❌ Erro ao iniciar reprodução:', error);
-              console.error('📋 Nome do erro:', error.name);
-              console.error('📋 Mensagem do erro:', error.message);
-              
               URL.revokeObjectURL(audioUrl);
               
               let userMessage = "Não foi possível reproduzir o áudio.";
               if (error.name === 'NotAllowedError') {
                 userMessage = "Interação do usuário necessária. Toque novamente para reproduzir.";
-              } else if (error.name === 'NotSupportedError') {
-                userMessage = "Formato de áudio não suportado neste dispositivo.";
               }
               
               toast({
@@ -261,27 +219,61 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
         });
         setIsLoading(false);
       }
-    } else if (audio) {
-      if (isPlaying) {
+    } else {
+      if (audio) {
         audio.pause();
         setIsPlaying(false);
-      } else {
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              setIsPlaying(true);
-            })
-            .catch((error) => {
-              console.error('❌ Erro ao retomar reprodução:', error);
-              toast({
-                title: "Erro",
-                description: "Não foi possível retomar a reprodução",
-                variant: "destructive"
-              });
-            });
+      }
+    }
+  };
+
+  // Convert audio to WAV format for better browser compatibility
+  const convertToWav = async (arrayBuffer: ArrayBuffer): Promise<Blob> => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+      
+      // Create WAV file
+      const length = audioBuffer.length * audioBuffer.numberOfChannels * 2 + 44;
+      const buffer = new ArrayBuffer(length);
+      const view = new DataView(buffer);
+      
+      const writeString = (offset: number, string: string) => {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      };
+      
+      // WAV header
+      writeString(0, 'RIFF');
+      view.setUint32(4, length - 8, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, audioBuffer.numberOfChannels, true);
+      view.setUint32(24, audioBuffer.sampleRate, true);
+      view.setUint32(28, audioBuffer.sampleRate * audioBuffer.numberOfChannels * 2, true);
+      view.setUint16(32, audioBuffer.numberOfChannels * 2, true);
+      view.setUint16(34, 16, true);
+      writeString(36, 'data');
+      view.setUint32(40, length - 44, true);
+      
+      // PCM data
+      let offset = 44;
+      for (let i = 0; i < audioBuffer.length; i++) {
+        for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+          const sample = Math.max(-1, Math.min(1, audioBuffer.getChannelData(channel)[i]));
+          view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+          offset += 2;
         }
       }
+      
+      return new Blob([buffer], { type: 'audio/wav' });
+    } catch (error) {
+      console.error('Erro na conversão WAV:', error);
+      // Return original as fallback
+      return new Blob([arrayBuffer], { type: 'audio/webm' });
     }
   };
 
@@ -398,6 +390,14 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
                 <div className="mt-1 w-full bg-background rounded-full h-2">
                   <div className="bg-primary h-2 rounded-full w-0"></div>
                 </div>
+              </div>
+            </div>
+            
+            {/* Filtro aplicado */}
+            <div className="mt-2 pt-2 border-t border-border">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Filtro aplicado:</span>
+                <span className="font-medium">{getFilterDisplayName(post.voice_filter)}</span>
               </div>
             </div>
           </div>

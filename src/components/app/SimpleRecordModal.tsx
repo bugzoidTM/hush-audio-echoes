@@ -202,7 +202,7 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
               <>
                 <Upload className="w-4 h-4 mr-2" />
                 Publicar Áudio
-              </Upload>
+              </>
             )}
           </Button>
         </div>

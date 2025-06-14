@@ -83,16 +83,7 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
           throw new Error('URL do áudio não encontrada');
         }
 
-        console.log('🔗 URL do áudio:', post.audio_url);
-        
-        // Testar se a URL está acessível
-        const testResponse = await fetch(post.audio_url, { method: 'HEAD' });
-        if (!testResponse.ok) {
-          console.error('❌ Erro ao acessar áudio:', testResponse.status, testResponse.statusText);
-          throw new Error(`Arquivo de áudio não encontrado (${testResponse.status})`);
-        }
-
-        console.log('✅ URL do áudio está acessível');
+        console.log('🔗 URL do áudio verificada:', post.audio_url);
 
         const newAudio = new Audio();
         
@@ -150,6 +141,8 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
         // Configurar a fonte do áudio
         newAudio.src = post.audio_url;
         newAudio.preload = 'auto';
+        
+        console.log('🎯 Tentando reproduzir áudio...');
         
         // Tentar reproduzir
         const playPromise = newAudio.play();

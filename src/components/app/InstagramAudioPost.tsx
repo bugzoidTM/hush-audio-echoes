@@ -1,7 +1,8 @@
+
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Heart, MessageCircle, Bookmark } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -41,39 +42,7 @@ const InstagramAudioPost = ({
   const [isLiked, setIsLiked] = useState(post.likes?.some(like => like.user_id === user?.id) || false);
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [isSaved, setIsSaved] = useState(false);
-  const [timeLeft, setTimeLeft] = useState('');
 
-  // Função para calcular tempo restante
-  const calculateTimeLeft = () => {
-    const now = new Date().getTime();
-    const expiresAt = new Date(post.expires_at).getTime();
-    const difference = expiresAt - now;
-    if (difference > 0) {
-      const hours = Math.floor(difference % (1000 * 60 * 60 * 24) / (1000 * 60 * 60));
-      const minutes = Math.floor(difference % (1000 * 60 * 60) / (1000 * 60));
-      const seconds = Math.floor(difference % (1000 * 60) / 1000);
-      if (hours > 0) {
-        return `${hours}h ${minutes}m restantes`;
-      } else if (minutes > 0) {
-        return `${minutes}m ${seconds}s restantes`;
-      } else {
-        return `${seconds}s restantes`;
-      }
-    } else {
-      return 'Expirado';
-    }
-  };
-
-  // Atualizar contador a cada segundo
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft());
-    }, 1000);
-
-    // Calcular inicial
-    setTimeLeft(calculateTimeLeft());
-    return () => clearInterval(timer);
-  }, [post.expires_at]);
   const handleLike = async () => {
     if (!user) return;
     try {
@@ -117,20 +86,6 @@ const InstagramAudioPost = ({
       description: isSaved ? "Áudio removido dos salvos" : "Áudio salvo com sucesso"
     });
   };
-  const getVoiceFilterName = (filter?: string) => {
-    switch (filter) {
-      case 'robot':
-        return 'Robô';
-      case 'echo':
-        return 'Eco';
-      case 'deep':
-        return 'Grave';
-      case 'high':
-        return 'Agudo';
-      default:
-        return 'Normal';
-    }
-  };
   return <Card className="w-full border-0 border-b border-border rounded-none">
       <CardHeader className="pb-3">
         <SimplePostHeader username={post.profiles?.username} avatarUrl={post.profiles?.avatar_url} createdAt={post.created_at} />
@@ -138,15 +93,12 @@ const InstagramAudioPost = ({
 
       <CardContent className="pt-0 space-y-3">
         {/* Player de Áudio */}
-        <SimpleAudioPlayer audioUrl={post.audio_url} duration={post.duration} voiceFilter={post.voice_filter} />
+        <SimpleAudioPlayer audioUrl={post.audio_url} duration={post.duration} voiceFilter={post.voice_filter} expiresAt={post.expires_at} />
 
         {/* Descrição */}
         <div>
           <SimplePostDescription description={post.description} />
         </div>
-
-        {/* Filtro aplicado e Contador regressivo - na mesma linha */}
-        
 
         {/* Ações do Instagram */}
         <div className="flex items-center justify-between pt-2">

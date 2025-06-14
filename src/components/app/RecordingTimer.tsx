@@ -15,13 +15,14 @@ const RecordingTimer = ({ duration, isRecording }: RecordingTimerProps) => {
     return Math.max(0, 60 - duration);
   };
 
-  console.log('⏱️ [RecordingTimer] render:', { duration, isRecording, remaining: getRemainingTime() });
+  console.log('⏱️ [RecordingTimer] Props recebidas:', { duration, isRecording });
 
   return (
     <div className="text-center space-y-2">
       <div className="text-3xl font-mono font-bold text-primary">
         {formatTime(duration)}
       </div>
+      
       {isRecording && (
         <div className="text-sm text-muted-foreground">
           <div className="animate-pulse text-red-500 flex items-center justify-center gap-1 mb-1">
@@ -33,11 +34,13 @@ const RecordingTimer = ({ duration, isRecording }: RecordingTimerProps) => {
           </div>
         </div>
       )}
+      
       {!isRecording && duration === 0 && (
         <div className="text-sm text-muted-foreground">
           Pressione o botão para começar a gravar
         </div>
       )}
+      
       {!isRecording && duration > 0 && (
         <div className="text-sm text-green-600">
           Gravação finalizada ({duration}s)

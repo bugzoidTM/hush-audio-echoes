@@ -38,7 +38,7 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
     cleanup
   } = useAudioRecording();
 
-  console.log('🎬 [SimpleRecordModal] render:', { 
+  console.log('🎬 [SimpleRecordModal] Estado atual:', { 
     isRecording, 
     duration, 
     audioBlob: !!audioBlob,
@@ -53,10 +53,9 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
     }
 
     setIsUploading(true);
-    console.log('📤 [SimpleRecordModal] Iniciando upload do áudio...');
+    console.log('📤 [SimpleRecordModal] Iniciando upload...');
     
     try {
-      // Upload to storage
       const fileName = `${user.id}/${Date.now()}.webm`;
       console.log('📁 [SimpleRecordModal] Nome do arquivo:', fileName);
       
@@ -69,16 +68,12 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
         throw uploadError;
       }
 
-      console.log('✅ [SimpleRecordModal] Upload realizado:', uploadData);
+      console.log('✅ [SimpleRecordModal] Upload realizado');
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('audio-files')
         .getPublicUrl(fileName);
 
-      console.log('🔗 [SimpleRecordModal] URL pública:', publicUrl);
-
-      // Save to database
       const { error: dbError } = await supabase
         .from('audio_posts')
         .insert({
@@ -94,7 +89,7 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
         throw dbError;
       }
 
-      console.log('✅ [SimpleRecordModal] Post salvo no banco');
+      console.log('✅ [SimpleRecordModal] Post salvo');
 
       toast({
         title: "Sucesso!",
@@ -105,7 +100,7 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
       handleClose();
       
     } catch (error) {
-      console.error('❌ [SimpleRecordModal] Erro no upload completo:', error);
+      console.error('❌ [SimpleRecordModal] Erro no upload:', error);
       toast({
         title: "Erro",
         description: "Não foi possível publicar o áudio",
@@ -117,7 +112,7 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
   };
 
   const handleClose = () => {
-    console.log('🚪 [SimpleRecordModal] Fechando modal, fazendo cleanup...');
+    console.log('🚪 [SimpleRecordModal] Fechando modal...');
     cleanup();
     setDescription('');
     setVoiceFilter('normal');
@@ -125,7 +120,7 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
   };
 
   const handleStopRecording = () => {
-    console.log('🛑 [SimpleRecordModal] Chamando stop recording com filtro:', voiceFilter);
+    console.log('🛑 [SimpleRecordModal] Parando gravação com filtro:', voiceFilter);
     stopRecording(voiceFilter);
   };
 

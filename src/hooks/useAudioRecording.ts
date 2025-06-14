@@ -80,6 +80,7 @@ export const useAudioRecording = () => {
           description: "Erro durante a gravação",
           variant: "destructive"
         });
+        setIsRecording(false);
       };
       
       // Start recording
@@ -102,6 +103,7 @@ export const useAudioRecording = () => {
           if (newDuration >= 60) {
             console.log('⏰ [useAudioRecording] Tempo limite de 60s atingido, parando gravação...');
             stopRecording('normal');
+            return 60;
           }
           
           return newDuration;
@@ -115,6 +117,7 @@ export const useAudioRecording = () => {
         description: "Não foi possível acessar o microfone. Verifique as permissões.",
         variant: "destructive"
       });
+      setIsRecording(false);
     }
   };
 
@@ -166,11 +169,11 @@ export const useAudioRecording = () => {
     }
   };
 
-  const cleanup = () => {
+  const cleanup = useCallback(() => {
     console.log('🧹 [useAudioRecording] Fazendo cleanup...');
     
     // Stop recording if active
-    if (isRecording && mediaRecorderRef.current) {
+    if (isRecording && mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
     }
     
@@ -199,7 +202,7 @@ export const useAudioRecording = () => {
     setDuration(0);
     voiceFilterRef.current = 'normal';
     chunksRef.current = [];
-  };
+  }, [isRecording]);
 
   return {
     isRecording,

@@ -134,11 +134,6 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
     startRecording();
   };
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return cleanup;
-  }, [cleanup]);
-
   // Reset state when modal opens
   useEffect(() => {
     if (open) {
@@ -148,6 +143,11 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
       setVoiceFilter('normal');
     }
   }, [open, cleanup]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return cleanup;
+  }, [cleanup]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>

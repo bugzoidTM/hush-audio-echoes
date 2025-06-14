@@ -81,8 +81,8 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter }: SimpleAudioPlaye
         const wavBlob = await convertToWav(arrayBuffer);
         console.log(`🔄 Convertido para WAV. Tamanho: ${wavBlob.size} bytes`);
 
-        const audioUrl = URL.createObjectURL(wavBlob);
-        console.log('📦 URL de objeto blob criada:', audioUrl);
+        const blobUrl = URL.createObjectURL(wavBlob);
+        console.log('📦 URL de objeto blob criada:', blobUrl);
 
         const newAudio = new Audio();
         
@@ -93,7 +93,7 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter }: SimpleAudioPlaye
         // Enhanced error handling
         const handleError = (error: Event) => {
           console.error('❌ Erro no elemento de áudio:', error);
-          URL.revokeObjectURL(audioUrl);
+          URL.revokeObjectURL(blobUrl);
           setIsPlaying(false);
           setAudio(null);
           setIsLoading(false);
@@ -108,7 +108,7 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter }: SimpleAudioPlaye
         const handleEnded = () => {
           console.log('🔚 Áudio terminou');
           setIsPlaying(false);
-          URL.revokeObjectURL(audioUrl);
+          URL.revokeObjectURL(blobUrl);
           setAudio(null);
         };
 
@@ -121,7 +121,7 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter }: SimpleAudioPlaye
         });
 
         // Set the source to the blob URL
-        newAudio.src = audioUrl;
+        newAudio.src = blobUrl;
         
         console.log('🎯 Tentando reproduzir áudio a partir do blob...');
         
@@ -138,7 +138,7 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter }: SimpleAudioPlaye
             })
             .catch((error) => {
               console.error('❌ Erro ao iniciar reprodução:', error);
-              URL.revokeObjectURL(audioUrl);
+              URL.revokeObjectURL(blobUrl);
               
               let userMessage = "Não foi possível reproduzir o áudio.";
               if (error.name === 'NotAllowedError') {

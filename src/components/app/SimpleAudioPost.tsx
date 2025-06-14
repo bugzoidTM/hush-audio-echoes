@@ -32,6 +32,7 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -41,6 +42,18 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
       setIsLiked(post.likes.some(like => like.user_id === user.id));
     }
   }, [user, post.likes]);
+
+  // Cleanup audio when component unmounts
+  useEffect(() => {
+    return () => {
+      if (audio) {
+        audio.pause();
+        audio.src = '';
+        setAudio(null);
+        setIsPlaying(false);
+      }
+    };
+  }, [audio]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -58,32 +71,137 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
     return `${Math.floor(diffInHours / 24)}d`;
   };
 
-  const togglePlayback = () => {
+  const togglePlayback = async () => {
+    console.log('🎵 Tentando reproduzir áudio:', post.audio_url);
+    
     if (!audio && !isPlaying) {
-      const newAudio = new Audio(post.audio_url);
-      newAudio.addEventListener('ended', () => {
-        setIsPlaying(false);
-        setAudio(null);
-      });
-      newAudio.addEventListener('error', () => {
+      setIsLoading(true);
+      
+      try {
+        // Verificar se a URL do áudio é válida
+        if (!post.audio_url || post.audio_url.trim() === '') {
+          throw new Error('URL do áudio não encontrada');
+        }
+
+        console.log('🔗 URL do áudio:', post.audio_url);
+        
+        // Testar se a URL está acessível
+        const testResponse = await fetch(post.audio_url, { method: 'HEAD' });
+        if (!testResponse.ok) {
+          console.error('❌ Erro ao acessar áudio:', testResponse.status, testResponse.statusText);
+          throw new Error(`Arquivo de áudio não encontrado (${testResponse.status})`);
+        }
+
+        console.log('✅ URL do áudio está acessível');
+
+        const newAudio = new Audio();
+        
+        newAudio.addEventListener('loadstart', () => {
+          console.log('📥 Começando a carregar áudio...');
+        });
+
+        newAudio.addEventListener('canplay', () => {
+          console.log('▶️ Áudio pode ser reproduzido');
+          setIsLoading(false);
+        });
+
+        newAudio.addEventListener('ended', () => {
+          console.log('🔚 Áudio terminou');
+          setIsPlaying(false);
+          setAudio(null);
+        });
+
+        newAudio.addEventListener('error', (e) => {
+          console.error('❌ Erro no áudio:', e);
+          const error = newAudio.error;
+          let errorMessage = 'Não foi possível reproduzir o áudio';
+          
+          if (error) {
+            switch (error.code) {
+              case error.MEDIA_ERR_ABORTED:
+                errorMessage = 'Reprodução abortada';
+                break;
+              case error.MEDIA_ERR_NETWORK:
+                errorMessage = 'Erro de rede ao carregar áudio';
+                break;
+              case error.MEDIA_ERR_DECODE:
+                errorMessage = 'Erro ao decodificar áudio';
+                break;
+              case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                errorMessage = 'Formato de áudio não suportado';
+                break;
+            }
+          }
+
+          toast({
+            title: "Erro",
+            description: errorMessage,
+            variant: "destructive"
+          });
+          setIsPlaying(false);
+          setAudio(null);
+          setIsLoading(false);
+        });
+
+        newAudio.addEventListener('loadeddata', () => {
+          console.log('📊 Dados do áudio carregados');
+        });
+
+        // Configurar a fonte do áudio
+        newAudio.src = post.audio_url;
+        newAudio.preload = 'auto';
+        
+        // Tentar reproduzir
+        const playPromise = newAudio.play();
+        
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('🎶 Reprodução iniciada com sucesso');
+              setAudio(newAudio);
+              setIsPlaying(true);
+              setIsLoading(false);
+            })
+            .catch((error) => {
+              console.error('❌ Erro ao iniciar reprodução:', error);
+              toast({
+                title: "Erro",
+                description: "Não foi possível reproduzir o áudio. Tente novamente.",
+                variant: "destructive"
+              });
+              setIsLoading(false);
+            });
+        }
+        
+      } catch (error) {
+        console.error('💥 Erro geral:', error);
         toast({
           title: "Erro",
-          description: "Não foi possível reproduzir o áudio",
+          description: error instanceof Error ? error.message : "Erro desconhecido ao reproduzir áudio",
           variant: "destructive"
         });
-        setIsPlaying(false);
-        setAudio(null);
-      });
-      newAudio.play();
-      setAudio(newAudio);
-      setIsPlaying(true);
+        setIsLoading(false);
+      }
     } else if (audio) {
       if (isPlaying) {
         audio.pause();
         setIsPlaying(false);
       } else {
-        audio.play();
-        setIsPlaying(true);
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setIsPlaying(true);
+            })
+            .catch((error) => {
+              console.error('❌ Erro ao retomar reprodução:', error);
+              toast({
+                title: "Erro",
+                description: "Não foi possível retomar a reprodução",
+                variant: "destructive"
+              });
+            });
+        }
       }
     }
   };
@@ -179,13 +297,20 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
                 size="sm"
                 variant="outline"
                 className="rounded-full w-10 h-10 p-0"
+                disabled={isLoading}
               >
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+                {isLoading ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : isPlaying ? (
+                  <Pause className="w-4 h-4" />
+                ) : (
+                  <Play className="w-4 h-4 ml-0.5" />
+                )}
               </Button>
               
               <div className="flex-1">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Áudio</span>
+                  <span>{isLoading ? 'Carregando...' : 'Áudio'}</span>
                   <div className="flex items-center space-x-1">
                     <Clock className="w-3 h-3" />
                     <span>{formatTime(post.duration)}</span>

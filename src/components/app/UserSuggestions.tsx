@@ -13,28 +13,63 @@ const UserSuggestions = () => {
   const { data: suggestedUsers, isLoading } = useQuery({
     queryKey: ['suggested-users'],
     queryFn: async () => {
-      // Buscar os 5 perfis mais ativos (com mais posts)
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          username,
-          display_name,
-          avatar_url,
-          audio_posts!inner(id)
-        `)
-        .neq('id', user?.id)
-        .limit(5);
+      console.log('🔍 [UserSuggestions] Buscando usuários sugeridos...');
+      
+      try {
+        // Buscar todos os profiles exceto o usuário atual
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url')
+          .neq('id', user?.id)
+          .limit(10);
 
-      if (error) throw error;
+        if (profilesError) {
+          console.error('❌ [UserSuggestions] Erro ao buscar profiles:', profilesError);
+          throw profilesError;
+        }
 
-      // Ordenar por número de posts (mais posts = mais seguido)
-      const sortedUsers = data?.map(profile => ({
-        ...profile,
-        postsCount: profile.audio_posts?.length || 0
-      })).sort((a, b) => b.postsCount - a.postsCount) || [];
+        console.log('👤 [UserSuggestions] Profiles encontrados:', profiles?.length || 0);
 
-      return sortedUsers;
+        if (!profiles || profiles.length === 0) {
+          return [];
+        }
+
+        // Buscar contagem de posts para cada usuário
+        const userIds = profiles.map(p => p.id);
+        const { data: posts, error: postsError } = await supabase
+          .from('audio_posts')
+          .select('user_id')
+          .in('user_id', userIds)
+          .eq('status', 'active');
+
+        if (postsError) {
+          console.error('❌ [UserSuggestions] Erro ao buscar posts:', postsError);
+          // Continue mesmo se não conseguir buscar posts
+        }
+
+        console.log('📊 [UserSuggestions] Posts encontrados:', posts?.length || 0);
+
+        // Combinar dados e calcular contagem de posts
+        const usersWithPostCount = profiles.map(profile => {
+          const userPosts = posts?.filter(post => post.user_id === profile.id) || [];
+          return {
+            ...profile,
+            postsCount: userPosts.length
+          };
+        });
+
+        // Ordenar por número de posts (mais ativo primeiro)
+        const sortedUsers = usersWithPostCount
+          .sort((a, b) => b.postsCount - a.postsCount)
+          .slice(0, 5); // Limitar a 5 sugestões
+
+        console.log('✅ [UserSuggestions] Usuários finais:', sortedUsers.length);
+        return sortedUsers;
+
+      } catch (error) {
+        console.error('💥 [UserSuggestions] Erro geral:', error);
+        throw error;
+      }
     },
     enabled: !!user,
   });

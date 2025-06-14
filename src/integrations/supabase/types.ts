@@ -409,7 +409,16 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      user_suggestions: {
+        Row: {
+          audio_posts_count: number | null
+          avatar_url: string | null
+          display_name: string | null
+          id: string | null
+          username: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       expire_old_posts: {

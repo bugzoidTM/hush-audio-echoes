@@ -15,12 +15,11 @@ export const useAudioRecording = () => {
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const voiceFilterRef = useRef<VoiceFilter>('normal');
-  const startTimeRef = useRef<number>(0);
 
   const { toast } = useToast();
 
   const startRecording = async () => {
-    console.log('🎙️ Iniciando gravação...');
+    console.log('🎙️ [useAudioRecording] Iniciando gravação...');
     
     try {
       // Reset previous state
@@ -36,7 +35,7 @@ export const useAudioRecording = () => {
         } 
       });
       
-      console.log('🔊 Stream de áudio obtido');
+      console.log('🔊 [useAudioRecording] Stream de áudio obtido');
       streamRef.current = stream;
       
       const mediaRecorder = new MediaRecorder(stream, {
@@ -46,24 +45,24 @@ export const useAudioRecording = () => {
       mediaRecorderRef.current = mediaRecorder;
       
       mediaRecorder.ondataavailable = (event) => {
-        console.log('📊 Dados de áudio disponíveis:', event.data.size, 'bytes');
+        console.log('📊 [useAudioRecording] Dados de áudio disponíveis:', event.data.size, 'bytes');
         if (event.data.size > 0) {
           chunksRef.current.push(event.data);
         }
       };
       
       mediaRecorder.onstop = async () => {
-        console.log('⏹️ Gravação finalizada, processando...');
+        console.log('⏹️ [useAudioRecording] Gravação finalizada, processando...');
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        console.log('📦 Blob criado:', blob.size, 'bytes');
+        console.log('📦 [useAudioRecording] Blob criado:', blob.size, 'bytes');
         
         try {
           // Apply voice filter before setting the audio blob
           const filteredBlob = await applyVoiceFilter(blob, voiceFilterRef.current);
-          console.log('🎛️ Filtro aplicado:', voiceFilterRef.current);
+          console.log('🎛️ [useAudioRecording] Filtro aplicado:', voiceFilterRef.current);
           setAudioBlob(filteredBlob);
         } catch (error) {
-          console.error('❌ Erro ao aplicar filtro:', error);
+          console.error('❌ [useAudioRecording] Erro ao aplicar filtro:', error);
           setAudioBlob(blob); // Use original blob if filter fails
         }
         
@@ -75,7 +74,7 @@ export const useAudioRecording = () => {
       };
       
       mediaRecorder.onerror = (event) => {
-        console.error('❌ Erro no MediaRecorder:', event);
+        console.error('❌ [useAudioRecording] Erro no MediaRecorder:', event);
         toast({
           title: "Erro",
           description: "Erro durante a gravação",
@@ -86,29 +85,31 @@ export const useAudioRecording = () => {
       // Start recording
       mediaRecorder.start();
       setIsRecording(true);
-      startTimeRef.current = Date.now();
       
-      console.log('▶️ Gravação iniciada, configurando timer...');
+      console.log('▶️ [useAudioRecording] Gravação iniciada, configurando timer...');
       
       // Clear any existing timer
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
       
-      // Start timer
+      // Start timer - update every second
       timerRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        console.log('⏰ Timer tick - elapsed:', elapsed);
-        setDuration(elapsed);
-        
-        if (elapsed >= 60) {
-          console.log('⏰ Tempo limite de 60s atingido');
-          stopRecording('normal');
-        }
+        setDuration(prev => {
+          const newDuration = prev + 1;
+          console.log('⏰ [useAudioRecording] Timer tick - duration:', newDuration);
+          
+          if (newDuration >= 60) {
+            console.log('⏰ [useAudioRecording] Tempo limite de 60s atingido, parando gravação...');
+            stopRecording('normal');
+          }
+          
+          return newDuration;
+        });
       }, 1000);
       
     } catch (error) {
-      console.error('❌ Erro ao iniciar gravação:', error);
+      console.error('❌ [useAudioRecording] Erro ao iniciar gravação:', error);
       toast({
         title: "Erro",
         description: "Não foi possível acessar o microfone. Verifique as permissões.",
@@ -118,38 +119,47 @@ export const useAudioRecording = () => {
   };
 
   const stopRecording = useCallback((voiceFilter: VoiceFilter = 'normal') => {
-    console.log('🛑 Parando gravação com filtro:', voiceFilter);
+    console.log('🛑 [useAudioRecording] Parando gravação com filtro:', voiceFilter);
     
     // Store the voice filter
     voiceFilterRef.current = voiceFilter;
     
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      console.log('🛑 [useAudioRecording] MediaRecorder está gravando, parando...');
       mediaRecorderRef.current.stop();
+    } else {
+      console.log('🛑 [useAudioRecording] MediaRecorder não está gravando, estado:', mediaRecorderRef.current?.state);
     }
     
     setIsRecording(false);
     
     if (timerRef.current) {
+      console.log('🛑 [useAudioRecording] Limpando timer...');
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
     
-    console.log('✅ Gravação parada');
+    console.log('✅ [useAudioRecording] Gravação parada');
   }, []);
 
   const playAudio = () => {
+    console.log('🎵 [useAudioRecording] Tentando reproduzir áudio...');
+    
     if (audioBlob && !isPlaying) {
       const audio = new Audio(URL.createObjectURL(audioBlob));
       audioRef.current = audio;
       
       audio.onended = () => {
+        console.log('🔚 [useAudioRecording] Áudio terminou');
         setIsPlaying(false);
         audioRef.current = null;
       };
       
       audio.play();
       setIsPlaying(true);
+      console.log('▶️ [useAudioRecording] Áudio iniciado');
     } else if (audioRef.current && isPlaying) {
+      console.log('⏸️ [useAudioRecording] Pausando áudio');
       audioRef.current.pause();
       audioRef.current = null;
       setIsPlaying(false);
@@ -157,7 +167,7 @@ export const useAudioRecording = () => {
   };
 
   const cleanup = () => {
-    console.log('🧹 Fazendo cleanup...');
+    console.log('🧹 [useAudioRecording] Fazendo cleanup...');
     
     // Stop recording if active
     if (isRecording && mediaRecorderRef.current) {
@@ -189,7 +199,6 @@ export const useAudioRecording = () => {
     setDuration(0);
     voiceFilterRef.current = 'normal';
     chunksRef.current = [];
-    startTimeRef.current = 0;
   };
 
   return {

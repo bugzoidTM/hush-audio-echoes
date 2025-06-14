@@ -38,44 +38,45 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
     cleanup
   } = useAudioRecording();
 
-  console.log('🎬 SimpleRecordModal render:', { 
+  console.log('🎬 [SimpleRecordModal] render:', { 
     isRecording, 
     duration, 
     audioBlob: !!audioBlob,
-    open 
+    open,
+    voiceFilter
   });
 
   const uploadAudio = async () => {
     if (!audioBlob || !user) {
-      console.log('❌ Upload cancelado - sem áudio ou usuário');
+      console.log('❌ [SimpleRecordModal] Upload cancelado - sem áudio ou usuário');
       return;
     }
 
     setIsUploading(true);
-    console.log('📤 Iniciando upload do áudio...');
+    console.log('📤 [SimpleRecordModal] Iniciando upload do áudio...');
     
     try {
       // Upload to storage
       const fileName = `${user.id}/${Date.now()}.webm`;
-      console.log('📁 Nome do arquivo:', fileName);
+      console.log('📁 [SimpleRecordModal] Nome do arquivo:', fileName);
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('audio-files')
         .upload(fileName, audioBlob);
 
       if (uploadError) {
-        console.error('❌ Erro no upload:', uploadError);
+        console.error('❌ [SimpleRecordModal] Erro no upload:', uploadError);
         throw uploadError;
       }
 
-      console.log('✅ Upload realizado:', uploadData);
+      console.log('✅ [SimpleRecordModal] Upload realizado:', uploadData);
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('audio-files')
         .getPublicUrl(fileName);
 
-      console.log('🔗 URL pública:', publicUrl);
+      console.log('🔗 [SimpleRecordModal] URL pública:', publicUrl);
 
       // Save to database
       const { error: dbError } = await supabase
@@ -89,11 +90,11 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
         });
 
       if (dbError) {
-        console.error('❌ Erro no banco:', dbError);
+        console.error('❌ [SimpleRecordModal] Erro no banco:', dbError);
         throw dbError;
       }
 
-      console.log('✅ Post salvo no banco');
+      console.log('✅ [SimpleRecordModal] Post salvo no banco');
 
       toast({
         title: "Sucesso!",
@@ -104,7 +105,7 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
       handleClose();
       
     } catch (error) {
-      console.error('❌ Erro no upload completo:', error);
+      console.error('❌ [SimpleRecordModal] Erro no upload completo:', error);
       toast({
         title: "Erro",
         description: "Não foi possível publicar o áudio",
@@ -116,7 +117,7 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
   };
 
   const handleClose = () => {
-    console.log('🚪 Fechando modal, fazendo cleanup...');
+    console.log('🚪 [SimpleRecordModal] Fechando modal, fazendo cleanup...');
     cleanup();
     setDescription('');
     setVoiceFilter('normal');
@@ -124,12 +125,12 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
   };
 
   const handleStopRecording = () => {
-    console.log('🛑 Chamando stop recording com filtro:', voiceFilter);
+    console.log('🛑 [SimpleRecordModal] Chamando stop recording com filtro:', voiceFilter);
     stopRecording(voiceFilter);
   };
 
   const handleStartRecording = () => {
-    console.log('▶️ Iniciando gravação...');
+    console.log('▶️ [SimpleRecordModal] Iniciando gravação...');
     startRecording();
   };
 
@@ -141,7 +142,7 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
   // Reset state when modal opens
   useEffect(() => {
     if (open) {
-      console.log('🔄 Modal aberto - resetando estado');
+      console.log('🔄 [SimpleRecordModal] Modal aberto - resetando estado');
       cleanup();
       setDescription('');
       setVoiceFilter('normal');
@@ -201,7 +202,7 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
               <>
                 <Upload className="w-4 h-4 mr-2" />
                 Publicar Áudio
-              </>
+              </Upload>
             )}
           </Button>
         </div>

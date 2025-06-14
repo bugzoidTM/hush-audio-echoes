@@ -15,7 +15,7 @@ const RecordingTimer = ({ duration, isRecording }: RecordingTimerProps) => {
     return Math.max(0, 60 - duration);
   };
 
-  console.log('⏱️ RecordingTimer render:', { duration, isRecording });
+  console.log('⏱️ [RecordingTimer] render:', { duration, isRecording, remaining: getRemainingTime() });
 
   return (
     <div className="text-center space-y-2">
@@ -28,8 +28,8 @@ const RecordingTimer = ({ duration, isRecording }: RecordingTimerProps) => {
             <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
             Gravando
           </span>
-          <div className="mt-1">
-            (máx. {getRemainingTime()}s restantes)
+          <div className="mt-1 text-orange-600">
+            {getRemainingTime()}s restantes (máx. 60s)
           </div>
         </div>
       )}
@@ -40,7 +40,7 @@ const RecordingTimer = ({ duration, isRecording }: RecordingTimerProps) => {
       )}
       {!isRecording && duration > 0 && (
         <div className="text-sm text-green-600">
-          Gravação finalizada
+          Gravação finalizada ({duration}s)
         </div>
       )}
     </div>

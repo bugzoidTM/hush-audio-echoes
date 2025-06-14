@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, Clock } from 'lucide-react';
@@ -9,14 +8,55 @@ interface SimpleAudioPlayerProps {
   audioUrl: string;
   duration: number;
   voiceFilter?: string;
+  expiresAt?: string; // Add expires_at prop
 }
 
-const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter }: SimpleAudioPlayerProps) => {
+const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: SimpleAudioPlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [timeLeft, setTimeLeft] = useState('');
   
   const { toast } = useToast();
+
+  // Calculate time left function
+  const calculateTimeLeft = () => {
+    if (!expiresAt) return '';
+    
+    const now = new Date().getTime();
+    const expiresAtTime = new Date(expiresAt).getTime();
+    const difference = expiresAtTime - now;
+
+    if (difference > 0) {
+      const hours = Math.floor(difference % (1000 * 60 * 60 * 24) / (1000 * 60 * 60));
+      const minutes = Math.floor(difference % (1000 * 60 * 60) / (1000 * 60));
+      const seconds = Math.floor(difference % (1000 * 60) / 1000);
+
+      if (hours > 0) {
+        return `${hours}h ${minutes}m restantes`;
+      } else if (minutes > 0) {
+        return `${minutes}m ${seconds}s restantes`;
+      } else {
+        return `${seconds}s restantes`;
+      }
+    } else {
+      return 'Expirado';
+    }
+  };
+
+  // Update countdown every second
+  useEffect(() => {
+    if (!expiresAt) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 1000);
+
+    // Calculate initial time
+    setTimeLeft(calculateTimeLeft());
+
+    return () => clearInterval(timer);
+  }, [expiresAt]);
 
   // Cleanup audio when component unmounts
   useEffect(() => {
@@ -210,6 +250,13 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter }: SimpleAudioPlaye
           <span>Filtro aplicado:</span>
           <span className="font-medium">{getFilterDisplayName(voiceFilter)}</span>
         </div>
+        
+        {/* Contador regressivo */}
+        {expiresAt && timeLeft && (
+          <div className="flex items-center justify-center text-xs text-muted-foreground mt-1">
+            <span>{timeLeft}</span>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -15,6 +15,8 @@ const RecordingTimer = ({ duration, isRecording }: RecordingTimerProps) => {
     return Math.max(0, 60 - duration);
   };
 
+  console.log('⏱️ RecordingTimer render:', { duration, isRecording });
+
   return (
     <div className="text-center space-y-2">
       <div className="text-3xl font-mono font-bold">
@@ -26,6 +28,11 @@ const RecordingTimer = ({ duration, isRecording }: RecordingTimerProps) => {
           <span className="ml-2">
             (máx. {getRemainingTime()}s restantes)
           </span>
+        </div>
+      )}
+      {!isRecording && duration === 0 && (
+        <div className="text-sm text-muted-foreground">
+          Pressione o botão para começar a gravar
         </div>
       )}
     </div>

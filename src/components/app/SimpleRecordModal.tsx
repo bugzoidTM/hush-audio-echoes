@@ -38,6 +38,8 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
     cleanup
   } = useAudioRecording();
 
+  console.log('🎬 SimpleRecordModal render:', { isRecording, duration, audioBlob: !!audioBlob });
+
   const uploadAudio = async () => {
     if (!audioBlob || !user) return;
 
@@ -103,7 +105,13 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
   };
 
   const handleStopRecording = () => {
+    console.log('🛑 Chamando stop recording com filtro:', voiceFilter);
     stopRecording(voiceFilter);
+  };
+
+  const handleStartRecording = () => {
+    console.log('▶️ Iniciando gravação...');
+    startRecording();
   };
 
   // Cleanup on unmount
@@ -133,7 +141,7 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
               isPlaying={isPlaying}
               audioBlob={audioBlob}
               isUploading={isUploading}
-              onStartRecording={startRecording}
+              onStartRecording={handleStartRecording}
               onStopRecording={handleStopRecording}
               onPlayAudio={playAudio}
             />

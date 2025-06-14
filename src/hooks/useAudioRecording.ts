@@ -82,10 +82,16 @@ export const useAudioRecording = () => {
       
       console.log('▶️ Gravação iniciada, configurando timer...');
       
-      // Start timer
+      // Start timer - clear any existing timer first
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      
       timerRef.current = setInterval(() => {
+        console.log('⏰ Timer tick');
         setDuration(prev => {
           const newDuration = prev + 1;
+          console.log('⏱️ Nova duração:', newDuration);
           if (newDuration >= 60) {
             console.log('⏰ Tempo limite de 60s atingido');
             stopRecording();

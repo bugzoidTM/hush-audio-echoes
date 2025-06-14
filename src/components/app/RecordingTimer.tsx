@@ -24,11 +24,11 @@ const RecordingTimer = ({ duration, isRecording }: RecordingTimerProps) => {
       </div>
       {isRecording && (
         <div className="text-sm text-muted-foreground">
-          <span className="animate-pulse text-red-500 flex items-center justify-center gap-1">
+          <div className="animate-pulse text-red-500 flex items-center justify-center gap-1 mb-1">
             <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
             Gravando
-          </span>
-          <div className="mt-1 text-orange-600">
+          </div>
+          <div className="text-orange-600">
             {getRemainingTime()}s restantes (máx. 60s)
           </div>
         </div>

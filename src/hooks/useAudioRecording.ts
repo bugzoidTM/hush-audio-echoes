@@ -15,6 +15,7 @@ export const useAudioRecording = () => {
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const voiceFilterRef = useRef<VoiceFilter>('normal');
+  const durationRef = useRef(0);
 
   const { toast } = useToast();
 
@@ -22,9 +23,11 @@ export const useAudioRecording = () => {
     console.log('🎙️ [useAudioRecording] Iniciando gravação...');
     
     try {
-      // Reset previous state
+      // Reset state
+      durationRef.current = 0;
       setDuration(0);
       setAudioBlob(null);
+      setIsRecording(true);
       chunksRef.current = [];
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -57,13 +60,12 @@ export const useAudioRecording = () => {
         console.log('📦 [useAudioRecording] Blob criado:', blob.size, 'bytes');
         
         try {
-          // Apply voice filter before setting the audio blob
           const filteredBlob = await applyVoiceFilter(blob, voiceFilterRef.current);
           console.log('🎛️ [useAudioRecording] Filtro aplicado:', voiceFilterRef.current);
           setAudioBlob(filteredBlob);
         } catch (error) {
           console.error('❌ [useAudioRecording] Erro ao aplicar filtro:', error);
-          setAudioBlob(blob); // Use original blob if filter fails
+          setAudioBlob(blob);
         }
         
         // Cleanup stream
@@ -85,8 +87,6 @@ export const useAudioRecording = () => {
       
       // Start recording
       mediaRecorder.start();
-      setIsRecording(true);
-      
       console.log('▶️ [useAudioRecording] Gravação iniciada, configurando timer...');
       
       // Clear any existing timer
@@ -94,20 +94,17 @@ export const useAudioRecording = () => {
         clearInterval(timerRef.current);
       }
       
-      // Start timer - update every second
+      // Start timer
       timerRef.current = setInterval(() => {
-        setDuration(prev => {
-          const newDuration = prev + 1;
-          console.log('⏰ [useAudioRecording] Timer tick - duration:', newDuration);
-          
-          if (newDuration >= 60) {
-            console.log('⏰ [useAudioRecording] Tempo limite de 60s atingido, parando gravação...');
-            stopRecording('normal');
-            return 60;
-          }
-          
-          return newDuration;
-        });
+        durationRef.current += 1;
+        console.log('⏰ [useAudioRecording] Timer tick - duration:', durationRef.current);
+        
+        setDuration(durationRef.current);
+        
+        if (durationRef.current >= 60) {
+          console.log('⏰ [useAudioRecording] Tempo limite de 60s atingido, parando gravação...');
+          stopRecording('normal');
+        }
       }, 1000);
       
     } catch (error) {
@@ -124,14 +121,11 @@ export const useAudioRecording = () => {
   const stopRecording = useCallback((voiceFilter: VoiceFilter = 'normal') => {
     console.log('🛑 [useAudioRecording] Parando gravação com filtro:', voiceFilter);
     
-    // Store the voice filter
     voiceFilterRef.current = voiceFilter;
     
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       console.log('🛑 [useAudioRecording] MediaRecorder está gravando, parando...');
       mediaRecorderRef.current.stop();
-    } else {
-      console.log('🛑 [useAudioRecording] MediaRecorder não está gravando, estado:', mediaRecorderRef.current?.state);
     }
     
     setIsRecording(false);
@@ -172,37 +166,33 @@ export const useAudioRecording = () => {
   const cleanup = useCallback(() => {
     console.log('🧹 [useAudioRecording] Fazendo cleanup...');
     
-    // Stop recording if active
-    if (isRecording && mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
     }
     
-    // Stop audio playback
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
     
-    // Clear timer
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
     
-    // Stop stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
     
-    // Reset state
     setIsRecording(false);
     setAudioBlob(null);
     setIsPlaying(false);
     setDuration(0);
+    durationRef.current = 0;
     voiceFilterRef.current = 'normal';
     chunksRef.current = [];
-  }, [isRecording]);
+  }, []);
 
   return {
     isRecording,

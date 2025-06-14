@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { applyVoiceFilter, VoiceFilter } from '@/utils/voiceFilters';
@@ -46,7 +45,7 @@ export const useAudioRecording = () => {
   };
 
   const startRecording = async () => {
-    console.log('🎙️ [useAudioRecording] Iniciando gravação...');
+    console.log('🎙️ [useAudioRecording] === INICIANDO GRAVAÇÃO ===');
     
     try {
       // Reset state
@@ -54,6 +53,7 @@ export const useAudioRecording = () => {
       setAudioBlob(null);
       chunksRef.current = [];
       
+      console.log('🎙️ [useAudioRecording] Solicitando permissão do microfone...');
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -62,9 +62,10 @@ export const useAudioRecording = () => {
         } 
       });
       
-      console.log('🔊 [useAudioRecording] Stream obtido');
+      console.log('🔊 [useAudioRecording] Stream obtido com sucesso');
       streamRef.current = stream;
       
+      console.log('🔊 [useAudioRecording] Criando MediaRecorder...');
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
@@ -72,33 +73,65 @@ export const useAudioRecording = () => {
       mediaRecorderRef.current = mediaRecorder;
       
       mediaRecorder.ondataavailable = (event) => {
-        console.log('📊 [useAudioRecording] Dados disponíveis:', event.data.size);
+        console.log('📊 [useAudioRecording] Dados disponíveis - tamanho:', event.data.size);
         if (event.data.size > 0) {
           chunksRef.current.push(event.data);
+          console.log('📊 [useAudioRecording] Total de chunks:', chunksRef.current.length);
         }
       };
       
       mediaRecorder.onstop = async () => {
-        console.log('⏹️ [useAudioRecording] MediaRecorder parado');
+        console.log('⏹️ [useAudioRecording] === MediaRecorder PARADO ===');
+        console.log('⏹️ [useAudioRecording] Total de chunks coletados:', chunksRef.current.length);
+        
+        if (chunksRef.current.length === 0) {
+          console.error('❌ [useAudioRecording] ERRO: Nenhum chunk de áudio foi coletado!');
+          toast({
+            title: "Erro",
+            description: "Nenhum áudio foi gravado",
+            variant: "destructive"
+          });
+          return;
+        }
+        
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        console.log('📦 [useAudioRecording] Blob criado - tamanho:', blob.size, 'bytes');
+        
+        if (blob.size === 0) {
+          console.error('❌ [useAudioRecording] ERRO: Blob está vazio!');
+          toast({
+            title: "Erro",
+            description: "Áudio gravado está vazio",
+            variant: "destructive"
+          });
+          return;
+        }
         
         try {
+          console.log('🎛️ [useAudioRecording] Aplicando filtro de voz:', voiceFilterRef.current);
           const filteredBlob = await applyVoiceFilter(blob, voiceFilterRef.current);
+          console.log('✅ [useAudioRecording] Filtro aplicado - tamanho final:', filteredBlob.size, 'bytes');
           setAudioBlob(filteredBlob);
         } catch (error) {
-          console.error('❌ [useAudioRecording] Erro no filtro:', error);
+          console.error('❌ [useAudioRecording] Erro ao aplicar filtro:', error);
+          console.log('🔄 [useAudioRecording] Usando áudio original sem filtro');
           setAudioBlob(blob);
         }
         
         // Cleanup stream
         if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current.getTracks().forEach(track => {
+            console.log('🛑 [useAudioRecording] Parando track:', track.kind);
+            track.stop();
+          });
           streamRef.current = null;
         }
+        
+        console.log('✅ [useAudioRecording] === GRAVAÇÃO FINALIZADA COM SUCESSO ===');
       };
       
       mediaRecorder.onerror = (event) => {
-        console.error('❌ [useAudioRecording] Erro no MediaRecorder:', event);
+        console.error('❌ [useAudioRecording] ERRO no MediaRecorder:', event);
         toast({
           title: "Erro",
           description: "Erro durante a gravação",
@@ -109,17 +142,33 @@ export const useAudioRecording = () => {
       };
       
       // Start recording and timer
+      console.log('▶️ [useAudioRecording] Iniciando gravação...');
       setIsRecording(true);
-      mediaRecorder.start();
+      mediaRecorder.start(1000); // Collect data every second
       startTimer();
       
-      console.log('✅ [useAudioRecording] Gravação iniciada');
+      console.log('✅ [useAudioRecording] Gravação iniciada com sucesso - Estado:', {
+        isRecording: true,
+        mediaRecorderState: mediaRecorder.state
+      });
       
     } catch (error) {
-      console.error('❌ [useAudioRecording] Erro ao iniciar:', error);
+      console.error('❌ [useAudioRecording] ERRO FATAL ao iniciar gravação:', error);
+      
+      let errorMessage = "Não foi possível acessar o microfone";
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          errorMessage = "Permissão do microfone negada. Permita o acesso ao microfone.";
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = "Microfone não encontrado. Verifique se há um microfone conectado.";
+        } else if (error.name === 'NotSupportedError') {
+          errorMessage = "Gravação de áudio não suportada neste navegador.";
+        }
+      }
+      
       toast({
         title: "Erro",
-        description: "Não foi possível acessar o microfone. Verifique as permissões.",
+        description: errorMessage,
         variant: "destructive"
       });
       setIsRecording(false);
@@ -127,17 +176,26 @@ export const useAudioRecording = () => {
   };
 
   const stopRecording = useCallback((voiceFilter: VoiceFilter = 'normal') => {
-    console.log('🛑 [useAudioRecording] Parando gravação...');
+    console.log('🛑 [useAudioRecording] === PARANDO GRAVAÇÃO ===');
+    console.log('🛑 [useAudioRecording] Filtro solicitado:', voiceFilter);
     
     voiceFilterRef.current = voiceFilter;
     setIsRecording(false);
     stopTimer();
     
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
+    if (mediaRecorderRef.current) {
+      console.log('🛑 [useAudioRecording] Estado do MediaRecorder:', mediaRecorderRef.current.state);
+      if (mediaRecorderRef.current.state === 'recording') {
+        console.log('🛑 [useAudioRecording] Parando MediaRecorder...');
+        mediaRecorderRef.current.stop();
+      } else {
+        console.log('⚠️ [useAudioRecording] MediaRecorder não está gravando:', mediaRecorderRef.current.state);
+      }
+    } else {
+      console.log('⚠️ [useAudioRecording] MediaRecorder é null');
     }
     
-    console.log('✅ [useAudioRecording] Gravação parada');
+    console.log('✅ [useAudioRecording] Comando de parada enviado');
   }, []);
 
   const playAudio = () => {
@@ -162,7 +220,7 @@ export const useAudioRecording = () => {
   };
 
   const cleanup = useCallback(() => {
-    console.log('🧹 [useAudioRecording] Cleanup...');
+    console.log('🧹 [useAudioRecording] === CLEANUP ===');
     
     setIsRecording(false);
     setAudioBlob(null);
@@ -172,6 +230,7 @@ export const useAudioRecording = () => {
     stopTimer();
     
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      console.log('🧹 [useAudioRecording] Parando MediaRecorder no cleanup');
       mediaRecorderRef.current.stop();
     }
     
@@ -181,12 +240,16 @@ export const useAudioRecording = () => {
     }
     
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach(track => {
+        console.log('🧹 [useAudioRecording] Parando track no cleanup:', track.kind);
+        track.stop();
+      });
       streamRef.current = null;
     }
     
     chunksRef.current = [];
     voiceFilterRef.current = 'normal';
+    console.log('✅ [useAudioRecording] Cleanup concluído');
   }, []);
 
   return {

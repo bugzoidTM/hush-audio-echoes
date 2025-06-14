@@ -157,6 +157,17 @@ const InstagramAudioPost = ({ post }: InstagramAudioPostProps) => {
           voiceFilter={post.voice_filter}
         />
 
+        {/* Descrição */}
+        <div>
+          <SimplePostDescription description={post.description} />
+        </div>
+
+        {/* Filtro e Contador - logo após a descrição */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Filtro: {getVoiceFilterName(post.voice_filter)}</span>
+          <span className={timeLeft === 'Expirado' ? 'text-red-500' : ''}>{timeLeft}</span>
+        </div>
+
         {/* Ações do Instagram */}
         <div className="flex items-center justify-between pt-2">
           <div className="flex items-center space-x-4">
@@ -196,11 +207,6 @@ const InstagramAudioPost = ({ post }: InstagramAudioPostProps) => {
           </div>
         )}
 
-        {/* Descrição */}
-        <div>
-          <SimplePostDescription description={post.description} />
-        </div>
-
         {/* Link para comentários */}
         <button 
           onClick={handleComment}
@@ -208,12 +214,6 @@ const InstagramAudioPost = ({ post }: InstagramAudioPostProps) => {
         >
           Adicionar comentário...
         </button>
-
-        {/* Rodapé com contador e filtro */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-muted">
-          <span>Filtro: {getVoiceFilterName(post.voice_filter)}</span>
-          <span className={timeLeft === 'Expirado' ? 'text-red-500' : ''}>{timeLeft}</span>
-        </div>
       </CardContent>
     </Card>
   );

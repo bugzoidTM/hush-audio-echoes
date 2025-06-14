@@ -19,12 +19,14 @@ import RecordAudioModal from './RecordAudioModal';
 
 interface InstagramLayoutProps {
   children: ReactNode;
+  onSectionChange?: (section: string) => void;
 }
 
-const InstagramLayout = ({ children }: InstagramLayoutProps) => {
+const InstagramLayout = ({ children, onSectionChange }: InstagramLayoutProps) => {
   const { user, signOut } = useAuth();
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [activeSection, setActiveSection] = useState('home');
 
   useEffect(() => {
     if (user) {
@@ -44,6 +46,11 @@ const InstagramLayout = ({ children }: InstagramLayoutProps) => {
 
   const displayName = userProfile?.display_name || userProfile?.username || 'Usuário';
 
+  const handleSectionChange = (section: string) => {
+    setActiveSection(section);
+    onSectionChange?.(section);
+  };
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar Esquerda */}
@@ -52,7 +59,7 @@ const InstagramLayout = ({ children }: InstagramLayoutProps) => {
           {/* Logo */}
           <div className="mb-8">
             <img 
-              src="/lovable-uploads/205b5735-3f33-453a-a025-eaffc0a2fba6.png" 
+              src="/lovable-uploads/56cd6089-5338-43e8-b284-be70d28c3849.png" 
               alt="SHHHH Logo" 
               className="h-8 w-auto"
             />
@@ -60,22 +67,38 @@ const InstagramLayout = ({ children }: InstagramLayoutProps) => {
 
           {/* Menu de Navegação */}
           <nav className="space-y-4">
-            <Button variant="ghost" className="w-full justify-start font-semibold">
+            <Button 
+              variant="ghost" 
+              className={`w-full justify-start ${activeSection === 'home' ? 'font-semibold' : ''}`}
+              onClick={() => handleSectionChange('home')}
+            >
               <Home className="w-6 h-6 mr-3" />
               Página inicial
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start">
+            <Button 
+              variant="ghost" 
+              className={`w-full justify-start ${activeSection === 'search' ? 'font-semibold' : ''}`}
+              onClick={() => handleSectionChange('search')}
+            >
               <Search className="w-6 h-6 mr-3" />
               Pesquisa
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start">
+            <Button 
+              variant="ghost" 
+              className={`w-full justify-start ${activeSection === 'explore' ? 'font-semibold' : ''}`}
+              onClick={() => handleSectionChange('explore')}
+            >
               <Compass className="w-6 h-6 mr-3" />
               Explorar
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start">
+            <Button 
+              variant="ghost" 
+              className={`w-full justify-start ${activeSection === 'notifications' ? 'font-semibold' : ''}`}
+              onClick={() => handleSectionChange('notifications')}
+            >
               <Heart className="w-6 h-6 mr-3" />
               Notificações
             </Button>
@@ -89,7 +112,11 @@ const InstagramLayout = ({ children }: InstagramLayoutProps) => {
               Criar
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start">
+            <Button 
+              variant="ghost" 
+              className={`w-full justify-start ${activeSection === 'profile' ? 'font-semibold' : ''}`}
+              onClick={() => handleSectionChange('profile')}
+            >
               <User className="w-6 h-6 mr-3" />
               Perfil
             </Button>
@@ -142,7 +169,7 @@ const InstagramLayout = ({ children }: InstagramLayoutProps) => {
                 <div>
                   <p className="font-semibold">{displayName}</p>
                   <p className="text-sm text-muted-foreground">
-                    {userProfile?.bio || 'Compartilhando áudios efêmeros'}
+                    {userProfile?.bio || 'Compartilhando áudios temporários'}
                   </p>
                 </div>
               </div>

@@ -1,14 +1,19 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import InstagramLayout from '@/components/app/InstagramLayout';
 import InstagramFeed from '@/components/app/InstagramFeed';
+import SearchSection from '@/components/app/SearchSection';
+import ExploreSection from '@/components/app/ExploreSection';
+import NotificationsSection from '@/components/app/NotificationsSection';
+import ProfileSection from '@/components/app/ProfileSection';
 import { Toaster } from '@/components/ui/toaster';
 
 const InstagramApp = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [activeSection, setActiveSection] = useState('home');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -31,10 +36,25 @@ const InstagramApp = () => {
     return null;
   }
 
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'search':
+        return <SearchSection />;
+      case 'explore':
+        return <ExploreSection />;
+      case 'notifications':
+        return <NotificationsSection />;
+      case 'profile':
+        return <ProfileSection />;
+      default:
+        return <InstagramFeed />;
+    }
+  };
+
   return (
     <>
-      <InstagramLayout>
-        <InstagramFeed />
+      <InstagramLayout onSectionChange={setActiveSection}>
+        {renderContent()}
       </InstagramLayout>
       <Toaster />
     </>

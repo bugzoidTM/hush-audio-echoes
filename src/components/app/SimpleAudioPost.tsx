@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,8 +74,14 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
     return `${Math.floor(diffInHours / 24)}d`;
   };
 
+  const checkAudioSupport = (mimeType: string) => {
+    const audio = document.createElement('audio');
+    return audio.canPlayType(mimeType) !== '';
+  };
+
   const togglePlayback = async () => {
     console.log('🎵 Tentando reproduzir áudio:', post.audio_url);
+    console.log('🌐 User Agent:', navigator.userAgent);
 
     // Cleanup previous object URLs
     if (audio && audio.src.startsWith('blob:')) {
@@ -91,9 +98,28 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
 
         console.log('🔗 URL do áudio a ser buscada:', post.audio_url);
 
-        // Fetch the audio data as a blob
+        // Verificar suporte a formatos de áudio
+        const supportedFormats = {
+          'audio/webm': checkAudioSupport('audio/webm'),
+          'audio/mp4': checkAudioSupport('audio/mp4'),
+          'audio/mpeg': checkAudioSupport('audio/mpeg'),
+          'audio/wav': checkAudioSupport('audio/wav'),
+          'audio/ogg': checkAudioSupport('audio/ogg')
+        };
+        
+        console.log('🎼 Formatos suportados:', supportedFormats);
+
+        // Fetch the audio data with proper headers for mobile compatibility
         console.log('📥 Buscando dados do áudio...');
-        const response = await fetch(post.audio_url);
+        const response = await fetch(post.audio_url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'audio/*,*/*;q=0.9',
+            'Range': 'bytes=0-',
+          },
+          mode: 'cors',
+          credentials: 'omit'
+        });
 
         if (!response.ok) {
           console.error('❌ Falha ao buscar áudio:', response.status, response.statusText);
@@ -103,10 +129,19 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
         const blob = await response.blob();
         console.log(`✅ Áudio buscado com sucesso. Tipo: ${blob.type}, Tamanho: ${blob.size} bytes`);
 
+        // Verificar se o formato é suportado
+        if (blob.type && !checkAudioSupport(blob.type)) {
+          console.warn('⚠️ Formato pode não ser suportado:', blob.type);
+        }
+
         const audioUrl = URL.createObjectURL(blob);
         console.log('📦 URL de objeto blob criada:', audioUrl);
 
         const newAudio = new Audio();
+        
+        // Set properties for mobile compatibility
+        newAudio.preload = 'auto';
+        newAudio.crossOrigin = 'anonymous';
         
         newAudio.addEventListener('loadstart', () => {
           console.log('📥 Começando a carregar áudio...');
@@ -117,10 +152,13 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
           setIsLoading(false);
         });
 
+        newAudio.addEventListener('canplaythrough', () => {
+          console.log('🎯 Áudio totalmente carregado e pronto');
+        });
+
         newAudio.addEventListener('ended', () => {
           console.log('🔚 Áudio terminou');
           setIsPlaying(false);
-          // Revoke on ended
           URL.revokeObjectURL(audioUrl);
           setAudio(null);
         });
@@ -131,6 +169,15 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
           let errorMessage = 'Não foi possível reproduzir o áudio';
           
           if (error) {
+            console.error('📋 Detalhes do erro:', {
+              code: error.code,
+              message: error.message,
+              MEDIA_ERR_ABORTED: error.MEDIA_ERR_ABORTED,
+              MEDIA_ERR_NETWORK: error.MEDIA_ERR_NETWORK,
+              MEDIA_ERR_DECODE: error.MEDIA_ERR_DECODE,
+              MEDIA_ERR_SRC_NOT_SUPPORTED: error.MEDIA_ERR_SRC_NOT_SUPPORTED
+            });
+
             switch (error.code) {
               case error.MEDIA_ERR_ABORTED:
                 errorMessage = 'Reprodução abortada';
@@ -142,7 +189,7 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
                 errorMessage = 'Erro ao decodificar áudio';
                 break;
               case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
-                errorMessage = 'Formato de áudio não suportado';
+                errorMessage = 'Formato de áudio não suportado neste navegador';
                 break;
             }
           }
@@ -162,12 +209,16 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
           console.log('📊 Dados do áudio carregados');
         });
 
+        newAudio.addEventListener('loadedmetadata', () => {
+          console.log('📝 Metadados carregados - duração:', newAudio.duration);
+        });
+
         // Set the source to the blob URL
         newAudio.src = audioUrl;
-        newAudio.preload = 'auto';
         
         console.log('🎯 Tentando reproduzir áudio a partir do blob...');
         
+        // For mobile Safari compatibility, try to play immediately
         const playPromise = newAudio.play();
         
         if (playPromise !== undefined) {
@@ -180,10 +231,21 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
             })
             .catch((error) => {
               console.error('❌ Erro ao iniciar reprodução:', error);
+              console.error('📋 Nome do erro:', error.name);
+              console.error('📋 Mensagem do erro:', error.message);
+              
               URL.revokeObjectURL(audioUrl);
+              
+              let userMessage = "Não foi possível reproduzir o áudio.";
+              if (error.name === 'NotAllowedError') {
+                userMessage = "Interação do usuário necessária. Toque novamente para reproduzir.";
+              } else if (error.name === 'NotSupportedError') {
+                userMessage = "Formato de áudio não suportado neste dispositivo.";
+              }
+              
               toast({
                 title: "Erro",
-                description: "Não foi possível reproduzir o áudio. O formato pode não ser suportado.",
+                description: userMessage,
                 variant: "destructive"
               });
               setIsLoading(false);

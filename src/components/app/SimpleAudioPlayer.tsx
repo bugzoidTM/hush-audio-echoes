@@ -173,6 +173,17 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
     currentNode.connect(audioCtx.destination);
   };
 
+  // Helper function to safely close AudioContext
+  const safeCloseAudioContext = (ctx: AudioContext) => {
+    if (ctx && ctx.state !== 'closed') {
+      try {
+        ctx.close();
+      } catch (error) {
+        console.warn('Erro ao fechar AudioContext:', error);
+      }
+    }
+  };
+
   // Cleanup audio when component unmounts
   useEffect(() => {
     return () => {
@@ -183,13 +194,20 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
         }
       }
       if (audioContext) {
-        audioContext.close();
+        safeCloseAudioContext(audioContext);
       }
     };
   }, [audio, audioContext]);
 
   const togglePlayback = async () => {
     console.log('🎵 Tentando reproduzir áudio:', audioUrl);
+
+    // If already playing, just pause
+    if (isPlaying && audio) {
+      audio.pause();
+      setIsPlaying(false);
+      return;
+    }
 
     // Cleanup previous audio and context
     if (audio) {
@@ -200,7 +218,7 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
       setAudio(null);
     }
     if (audioContext) {
-      audioContext.close();
+      safeCloseAudioContext(audioContext);
       setAudioContext(null);
       setSource(null);
     }
@@ -260,7 +278,7 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
           setIsPlaying(false);
           setAudio(null);
           setIsLoading(false);
-          audioCtx.close();
+          safeCloseAudioContext(audioCtx);
           
           toast({
             title: "Aviso",
@@ -274,7 +292,7 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
           setIsPlaying(false);
           URL.revokeObjectURL(blobUrl);
           setAudio(null);
-          audioCtx.close();
+          safeCloseAudioContext(audioCtx);
           setAudioContext(null);
           setSource(null);
         };
@@ -313,7 +331,7 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
             .catch((error) => {
               console.error('❌ Erro ao iniciar reprodução:', error);
               URL.revokeObjectURL(blobUrl);
-              audioCtx.close();
+              safeCloseAudioContext(audioCtx);
               
               let userMessage = "Não foi possível reproduzir o áudio.";
               if (error.name === 'NotAllowedError') {
@@ -337,11 +355,6 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
           variant: "destructive"
         });
         setIsLoading(false);
-      }
-    } else {
-      if (audio) {
-        audio.pause();
-        setIsPlaying(false);
       }
     }
   };

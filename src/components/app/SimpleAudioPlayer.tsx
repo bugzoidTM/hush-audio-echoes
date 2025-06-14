@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, Clock } from 'lucide-react';
@@ -8,7 +9,7 @@ interface SimpleAudioPlayerProps {
   audioUrl: string;
   duration: number;
   voiceFilter?: string;
-  expiresAt?: string; // Add expires_at prop
+  expiresAt?: string;
 }
 
 const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: SimpleAudioPlayerProps) => {
@@ -16,13 +17,13 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
-  
+
   const { toast } = useToast();
 
-  // Calculate time left function
+  // ---- Função de cálculo para o contador regressivo ----
   const calculateTimeLeft = () => {
     if (!expiresAt) return '';
-    
+
     const now = new Date().getTime();
     const expiresAtTime = new Date(expiresAt).getTime();
     const difference = expiresAtTime - now;
@@ -44,7 +45,6 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
     }
   };
 
-  // Update countdown every second
   useEffect(() => {
     if (!expiresAt) return;
 
@@ -52,7 +52,6 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
       setTimeLeft(calculateTimeLeft());
     }, 1000);
 
-    // Calculate initial time
     setTimeLeft(calculateTimeLeft());
 
     return () => clearInterval(timer);
@@ -229,7 +228,7 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
             <Play className="w-4 h-4 ml-0.5" />
           )}
         </Button>
-        
+
         <div className="flex-1">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{isLoading ? 'Carregando...' : 'Áudio'}</span>
@@ -243,17 +242,18 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
           </div>
         </div>
       </div>
-      
-      {/* Filtro aplicado */}
+
+      {/* Filtro aplicado e contador logo abaixo */}
       <div className="mt-2 pt-2 border-t border-border">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>Filtro aplicado:</span>
           <span className="font-medium">{getFilterDisplayName(voiceFilter)}</span>
         </div>
-        
-        {/* Contador regressivo */}
         {expiresAt && timeLeft && (
-          <div className="flex items-center justify-center text-xs text-muted-foreground mt-1">
+          <div
+            className="flex items-center justify-center text-xs text-muted-foreground mt-1"
+            data-testid="countdown-timer"
+          >
             <span>{timeLeft}</span>
           </div>
         )}
@@ -263,3 +263,4 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
 };
 
 export default SimpleAudioPlayer;
+

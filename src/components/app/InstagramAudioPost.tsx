@@ -162,9 +162,9 @@ const InstagramAudioPost = ({ post }: InstagramAudioPostProps) => {
           <SimplePostDescription description={post.description} />
         </div>
 
-        {/* Filtro e Contador - logo após a descrição */}
+        {/* Filtro aplicado e Contador regressivo - na mesma linha */}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Filtro: {getVoiceFilterName(post.voice_filter)}</span>
+          <span>Filtro aplicado: {getVoiceFilterName(post.voice_filter)}</span>
           <span className={timeLeft === 'Expirado' ? 'text-red-500' : ''}>{timeLeft}</span>
         </div>
 

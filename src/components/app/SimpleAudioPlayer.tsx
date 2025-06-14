@@ -15,14 +15,12 @@ interface SimpleAudioPlayerProps {
 const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: SimpleAudioPlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [source, setSource] = useState<MediaElementAudioSourceNode | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
 
   const { toast } = useToast();
 
-  // Calculate countdown timer
+  // ---- Função de cálculo para o contador regressivo ----
   const calculateTimeLeft = () => {
     if (!expiresAt) return '';
 
@@ -59,120 +57,6 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
     return () => clearInterval(timer);
   }, [expiresAt]);
 
-  // Apply voice filter using Web Audio API
-  const applyVoiceFilter = (audioCtx: AudioContext, sourceNode: MediaElementAudioSourceNode, filterType?: string) => {
-    let currentNode: AudioNode = sourceNode;
-
-    switch (filterType) {
-      case 'robot':
-        // Robot effect using bit crusher simulation
-        const robotGain = audioCtx.createGain();
-        robotGain.gain.value = 0.3;
-        const robotFilter = audioCtx.createBiquadFilter();
-        robotFilter.type = 'lowpass';
-        robotFilter.frequency.value = 2000;
-        currentNode.connect(robotGain);
-        robotGain.connect(robotFilter);
-        currentNode = robotFilter;
-        break;
-
-      case 'helium':
-        // Helium effect using pitch shift simulation
-        const heliumGain = audioCtx.createGain();
-        heliumGain.gain.value = 0.8;
-        const heliumFilter = audioCtx.createBiquadFilter();
-        heliumFilter.type = 'highpass';
-        heliumFilter.frequency.value = 800;
-        heliumFilter.Q.value = 5;
-        currentNode.connect(heliumGain);
-        heliumGain.connect(heliumFilter);
-        currentNode = heliumFilter;
-        break;
-
-      case 'deep':
-        // Deep voice effect
-        const deepGain = audioCtx.createGain();
-        deepGain.gain.value = 1.2;
-        const deepFilter = audioCtx.createBiquadFilter();
-        deepFilter.type = 'lowpass';
-        deepFilter.frequency.value = 500;
-        deepFilter.Q.value = 3;
-        currentNode.connect(deepGain);
-        deepGain.connect(deepFilter);
-        currentNode = deepFilter;
-        break;
-
-      case 'echo':
-        // Echo effect using delay
-        const echoDelay = audioCtx.createDelay(0.5);
-        echoDelay.delayTime.value = 0.3;
-        const echoGain = audioCtx.createGain();
-        echoGain.gain.value = 0.4;
-        const echoFeedback = audioCtx.createGain();
-        echoFeedback.gain.value = 0.3;
-        
-        currentNode.connect(echoDelay);
-        echoDelay.connect(echoGain);
-        echoGain.connect(echoFeedback);
-        echoFeedback.connect(echoDelay);
-        
-        // Mix dry and wet signals
-        const echoMixer = audioCtx.createGain();
-        currentNode.connect(echoMixer);
-        echoGain.connect(echoMixer);
-        currentNode = echoMixer;
-        break;
-
-      case 'whisper':
-        // Whisper effect using low gain and high-frequency filtering
-        const whisperGain = audioCtx.createGain();
-        whisperGain.gain.value = 0.3;
-        const whisperFilter = audioCtx.createBiquadFilter();
-        whisperFilter.type = 'highpass';
-        whisperFilter.frequency.value = 1000;
-        currentNode.connect(whisperGain);
-        whisperGain.connect(whisperFilter);
-        currentNode = whisperFilter;
-        break;
-
-      case 'alien':
-        // Alien effect using ring modulation simulation
-        const alienOscillator = audioCtx.createOscillator();
-        alienOscillator.frequency.value = 30;
-        alienOscillator.type = 'sine';
-        const alienGain = audioCtx.createGain();
-        alienGain.gain.value = 0.7;
-        const alienModulator = audioCtx.createGain();
-        
-        alienOscillator.connect(alienModulator.gain);
-        currentNode.connect(alienModulator);
-        alienModulator.connect(alienGain);
-        alienOscillator.start();
-        currentNode = alienGain;
-        break;
-
-      case 'chipmunk':
-        // Chipmunk effect using high-frequency emphasis
-        const chipmunkGain = audioCtx.createGain();
-        chipmunkGain.gain.value = 0.9;
-        const chipmunkFilter = audioCtx.createBiquadFilter();
-        chipmunkFilter.type = 'highshelf';
-        chipmunkFilter.frequency.value = 2000;
-        chipmunkFilter.gain.value = 10;
-        currentNode.connect(chipmunkGain);
-        chipmunkGain.connect(chipmunkFilter);
-        currentNode = chipmunkFilter;
-        break;
-
-      default:
-        // Normal - no filter
-        break;
-    }
-
-    // Connect to destination
-    currentNode.connect(audioCtx.destination);
-  };
-
   // Cleanup audio when component unmounts
   useEffect(() => {
     return () => {
@@ -181,28 +65,26 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
         if (audio.src.startsWith('blob:')) {
           URL.revokeObjectURL(audio.src);
         }
-      }
-      if (audioContext) {
-        audioContext.close();
+        audio.removeEventListener('error', () => {});
+        audio.removeEventListener('ended', () => {});
+        setAudio(null);
+        setIsPlaying(false);
       }
     };
-  }, [audio, audioContext]);
+  }, [audio]);
 
   const togglePlayback = async () => {
     console.log('🎵 Tentando reproduzir áudio:', audioUrl);
 
-    // Cleanup previous audio and context
+    // Cleanup previous audio and object URLs
     if (audio) {
       audio.pause();
       if (audio.src.startsWith('blob:')) {
         URL.revokeObjectURL(audio.src);
       }
+      audio.removeEventListener('error', () => {});
+      audio.removeEventListener('ended', () => {});
       setAudio(null);
-    }
-    if (audioContext) {
-      audioContext.close();
-      setAudioContext(null);
-      setSource(null);
     }
     
     if (!isPlaying) {
@@ -241,15 +123,9 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
         const blobUrl = URL.createObjectURL(wavBlob);
         console.log('📦 URL de objeto blob criada:', blobUrl);
 
-        // Create audio context for filters
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        
-        // Resume audio context if suspended (required by some browsers)
-        if (audioCtx.state === 'suspended') {
-          await audioCtx.resume();
-        }
-
         const newAudio = new Audio();
+        
+        // Set properties for better compatibility
         newAudio.preload = 'auto';
         newAudio.crossOrigin = 'anonymous';
         
@@ -260,7 +136,6 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
           setIsPlaying(false);
           setAudio(null);
           setIsLoading(false);
-          audioCtx.close();
           
           toast({
             title: "Aviso",
@@ -274,9 +149,6 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
           setIsPlaying(false);
           URL.revokeObjectURL(blobUrl);
           setAudio(null);
-          audioCtx.close();
-          setAudioContext(null);
-          setSource(null);
         };
 
         newAudio.addEventListener('error', handleError);
@@ -290,30 +162,22 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
         // Set the source to the blob URL
         newAudio.src = blobUrl;
         
-        // Create audio source node and apply filters
-        const audioSource = audioCtx.createMediaElementSource(newAudio);
+        console.log('🎯 Tentando reproduzir áudio a partir do blob...');
         
-        console.log('🎯 Aplicando filtro de voz:', voiceFilter);
-        applyVoiceFilter(audioCtx, audioSource, voiceFilter);
-        
-        console.log('🎯 Tentando reproduzir áudio com filtros...');
-        
+        // For mobile compatibility, try to play immediately
         const playPromise = newAudio.play();
         
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
-              console.log('🎶 Reprodução iniciada com sucesso com filtros');
+              console.log('🎶 Reprodução iniciada com sucesso');
               setAudio(newAudio);
-              setAudioContext(audioCtx);
-              setSource(audioSource);
               setIsPlaying(true);
               setIsLoading(false);
             })
             .catch((error) => {
               console.error('❌ Erro ao iniciar reprodução:', error);
               URL.revokeObjectURL(blobUrl);
-              audioCtx.close();
               
               let userMessage = "Não foi possível reproduzir o áudio.";
               if (error.name === 'NotAllowedError') {
@@ -399,3 +263,4 @@ const SimpleAudioPlayer = ({ audioUrl, duration, voiceFilter, expiresAt }: Simpl
 };
 
 export default SimpleAudioPlayer;
+

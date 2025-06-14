@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,6 +47,9 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
     return () => {
       if (audio) {
         audio.pause();
+        if (audio.src.startsWith('blob:')) {
+          URL.revokeObjectURL(audio.src);
+        }
         audio.src = '';
         setAudio(null);
         setIsPlaying(false);
@@ -73,17 +75,36 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
 
   const togglePlayback = async () => {
     console.log('🎵 Tentando reproduzir áudio:', post.audio_url);
+
+    // Cleanup previous object URLs
+    if (audio && audio.src.startsWith('blob:')) {
+      URL.revokeObjectURL(audio.src);
+    }
     
     if (!audio && !isPlaying) {
       setIsLoading(true);
       
       try {
-        // Verificar se a URL do áudio é válida
         if (!post.audio_url || post.audio_url.trim() === '') {
           throw new Error('URL do áudio não encontrada');
         }
 
-        console.log('🔗 URL do áudio verificada:', post.audio_url);
+        console.log('🔗 URL do áudio a ser buscada:', post.audio_url);
+
+        // Fetch the audio data as a blob
+        console.log('📥 Buscando dados do áudio...');
+        const response = await fetch(post.audio_url);
+
+        if (!response.ok) {
+          console.error('❌ Falha ao buscar áudio:', response.status, response.statusText);
+          throw new Error(`Não foi possível carregar o arquivo de áudio (${response.status})`);
+        }
+        
+        const blob = await response.blob();
+        console.log(`✅ Áudio buscado com sucesso. Tipo: ${blob.type}, Tamanho: ${blob.size} bytes`);
+
+        const audioUrl = URL.createObjectURL(blob);
+        console.log('📦 URL de objeto blob criada:', audioUrl);
 
         const newAudio = new Audio();
         
@@ -99,11 +120,13 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
         newAudio.addEventListener('ended', () => {
           console.log('🔚 Áudio terminou');
           setIsPlaying(false);
+          // Revoke on ended
+          URL.revokeObjectURL(audioUrl);
           setAudio(null);
         });
 
         newAudio.addEventListener('error', (e) => {
-          console.error('❌ Erro no áudio:', e);
+          console.error('❌ Erro no elemento de áudio:', e);
           const error = newAudio.error;
           let errorMessage = 'Não foi possível reproduzir o áudio';
           
@@ -130,6 +153,7 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
             variant: "destructive"
           });
           setIsPlaying(false);
+          URL.revokeObjectURL(audioUrl);
           setAudio(null);
           setIsLoading(false);
         });
@@ -138,13 +162,12 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
           console.log('📊 Dados do áudio carregados');
         });
 
-        // Configurar a fonte do áudio
-        newAudio.src = post.audio_url;
+        // Set the source to the blob URL
+        newAudio.src = audioUrl;
         newAudio.preload = 'auto';
         
-        console.log('🎯 Tentando reproduzir áudio...');
+        console.log('🎯 Tentando reproduzir áudio a partir do blob...');
         
-        // Tentar reproduzir
         const playPromise = newAudio.play();
         
         if (playPromise !== undefined) {
@@ -157,9 +180,10 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
             })
             .catch((error) => {
               console.error('❌ Erro ao iniciar reprodução:', error);
+              URL.revokeObjectURL(audioUrl);
               toast({
                 title: "Erro",
-                description: "Não foi possível reproduzir o áudio. Tente novamente.",
+                description: "Não foi possível reproduzir o áudio. O formato pode não ser suportado.",
                 variant: "destructive"
               });
               setIsLoading(false);

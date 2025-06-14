@@ -38,26 +38,44 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
     cleanup
   } = useAudioRecording();
 
-  console.log('🎬 SimpleRecordModal render:', { isRecording, duration, audioBlob: !!audioBlob });
+  console.log('🎬 SimpleRecordModal render:', { 
+    isRecording, 
+    duration, 
+    audioBlob: !!audioBlob,
+    open 
+  });
 
   const uploadAudio = async () => {
-    if (!audioBlob || !user) return;
+    if (!audioBlob || !user) {
+      console.log('❌ Upload cancelado - sem áudio ou usuário');
+      return;
+    }
 
     setIsUploading(true);
+    console.log('📤 Iniciando upload do áudio...');
     
     try {
       // Upload to storage
       const fileName = `${user.id}/${Date.now()}.webm`;
+      console.log('📁 Nome do arquivo:', fileName);
+      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('audio-files')
         .upload(fileName, audioBlob);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('❌ Erro no upload:', uploadError);
+        throw uploadError;
+      }
+
+      console.log('✅ Upload realizado:', uploadData);
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('audio-files')
         .getPublicUrl(fileName);
+
+      console.log('🔗 URL pública:', publicUrl);
 
       // Save to database
       const { error: dbError } = await supabase
@@ -70,7 +88,12 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
           voice_filter: voiceFilter
         });
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('❌ Erro no banco:', dbError);
+        throw dbError;
+      }
+
+      console.log('✅ Post salvo no banco');
 
       toast({
         title: "Sucesso!",
@@ -81,7 +104,7 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
       handleClose();
       
     } catch (error) {
-      console.error('Erro ao fazer upload:', error);
+      console.error('❌ Erro no upload completo:', error);
       toast({
         title: "Erro",
         description: "Não foi possível publicar o áudio",
@@ -94,13 +117,9 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
 
   const handleClose = () => {
     console.log('🚪 Fechando modal, fazendo cleanup...');
-    
     cleanup();
-    
-    // Reset local state
     setDescription('');
     setVoiceFilter('normal');
-    
     onClose();
   };
 
@@ -118,6 +137,16 @@ const SimpleRecordModal = ({ open, onClose, onSuccess }: SimpleRecordModalProps)
   useEffect(() => {
     return cleanup;
   }, [cleanup]);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (open) {
+      console.log('🔄 Modal aberto - resetando estado');
+      cleanup();
+      setDescription('');
+      setVoiceFilter('normal');
+    }
+  }, [open, cleanup]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>

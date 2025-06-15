@@ -69,12 +69,16 @@ const ShhhhFeed = () => {
           }
         }
 
-        // Combine data
-        const enrichedPosts = posts.map(post => ({
-          ...post,
-          profiles: profiles?.find(profile => profile.id === post.user_id) || null,
-          likes: likes.filter(like => like.audio_id === post.id) || []
-        }));
+        // Combine data and calculate likes_count
+        const enrichedPosts = posts.map(post => {
+          const postLikes = likes.filter(like => like.audio_id === post.id);
+          return {
+            ...post,
+            profiles: profiles?.find(profile => profile.id === post.user_id) || null,
+            likes: postLikes,
+            likes_count: postLikes.length
+          };
+        });
 
         console.log('✅ [ShhhhFeed] Posts carregados:', enrichedPosts.length);
         return enrichedPosts;

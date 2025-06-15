@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import SimpleApp from "./pages/SimpleApp";
 import UpdatedApp from "./pages/UpdatedApp";
 import InstagramApp from "./pages/InstagramApp";
+import UserProfile from "./pages/UserProfile";
 import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const AppRouter = () => (
               <Route path="/simple" element={<SimpleApp />} />
               <Route path="/updated" element={<UpdatedApp />} />
               <Route path="/instagram" element={<InstagramApp />} />
+              <Route path="/user/:userId" element={<UserProfile />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/hashtag/:hashtag" element={<HashtagPage />} />
               <Route path="*" element={<NotFound />} />

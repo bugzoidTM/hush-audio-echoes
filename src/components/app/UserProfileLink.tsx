@@ -15,9 +15,7 @@ const UserProfileLink = ({ userId, username, children, className = "" }: UserPro
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Por enquanto, mostrar alerta com informações do usuário
-    // Futuramente, navegar para o perfil do usuário
-    alert(`Perfil de ${username || 'Usuário'} (ID: ${userId})`);
+    navigate(`/user/${userId}`);
   };
 
   return (

@@ -12,24 +12,41 @@ const UpdatedAudioFeed = () => {
   const { data: audioPosts, isLoading, error } = useQuery({
     queryKey: ['audio-posts'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: posts, error: postsError } = await supabase
         .from('audio_posts')
-        .select(`
-          *,
-          profiles:user_id (
-            username,
-            display_name,
-            avatar_url
-          ),
-          likes (
-            user_id
-          )
-        `)
+        .select('*')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data;
+      if (postsError) throw postsError;
+
+      if (!posts || posts.length === 0) return [];
+
+      // Get unique user IDs
+      const userIds = [...new Set(posts.map(post => post.user_id).filter(Boolean))];
+      
+      // Fetch profiles for all users
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Fetch likes for all posts
+      const { data: likes, error: likesError } = await supabase
+        .from('likes')
+        .select('user_id, audio_id')
+        .in('audio_id', posts.map(post => post.id));
+
+      if (likesError) throw likesError;
+
+      // Combine data
+      return posts.map(post => ({
+        ...post,
+        profiles: profiles?.find(profile => profile.id === post.user_id) || null,
+        likes: likes?.filter(like => like.audio_id === post.id) || []
+      }));
     },
   });
 

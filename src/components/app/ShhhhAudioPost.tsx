@@ -129,9 +129,10 @@ const ShhhhAudioPost = ({ post, onPostDeleted }: ShhhhAudioPostProps) => {
     });
 
     try {
+      // Use DELETE instead of UPDATE to avoid RLS policy issues
       const { error } = await supabase
         .from('audio_posts')
-        .update({ status: 'deleted' })
+        .delete()
         .eq('id', post.id)
         .eq('user_id', user!.id); // Double check ownership
 

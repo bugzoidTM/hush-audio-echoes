@@ -10,7 +10,7 @@ import { ArrowLeft, Calendar } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FollowButton from '@/components/app/FollowButton';
-import InstagramAudioPost from '@/components/app/InstagramAudioPost';
+import ShhhhAudioPost from '@/components/app/ShhhhAudioPost';
 
 const UserProfile = () => {
   const { userId } = useParams();
@@ -186,7 +186,7 @@ const UserProfile = () => {
             </Card>
           ) : (
             posts.map((post) => (
-              <InstagramAudioPost key={post.id} post={post} />
+              <ShhhhAudioPost key={post.id} post={post} />
             ))
           )}
         </div>

@@ -1,7 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import InstagramAudioPost from './InstagramAudioPost';
+import ShhhhAudioPost from './ShhhhAudioPost';
 import { Card, CardContent } from '@/components/ui/card';
 import { Mic } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -92,7 +92,7 @@ const ShhhhFeed = () => {
   return (
     <div className="space-y-6">
       {audioPosts.map((post) => (
-        <InstagramAudioPost key={post.id} post={post} />
+        <ShhhhAudioPost key={post.id} post={post} />
       ))}
     </div>
   );

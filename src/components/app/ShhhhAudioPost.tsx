@@ -31,9 +31,10 @@ interface ShhhhAudioPostProps {
     } | null;
     likes: Array<{ user_id: string }>;
   };
+  onPostDeleted?: () => void;
 }
 
-const ShhhhAudioPost = ({ post }: ShhhhAudioPostProps) => {
+const ShhhhAudioPost = ({ post, onPostDeleted }: ShhhhAudioPostProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -67,6 +68,36 @@ const ShhhhAudioPost = ({ post }: ShhhhAudioPostProps) => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!user || user.id !== post.user_id) return;
+
+    try {
+      const { error } = await supabase
+        .from('audio_posts')
+        .update({ status: 'deleted' })
+        .eq('id', post.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Post excluído",
+        description: "Seu post foi excluído com sucesso",
+      });
+
+      // Notificar o componente pai que o post foi deletado
+      if (onPostDeleted) {
+        onPostDeleted();
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o post",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleUserClick = () => {
     if (post.profiles?.id) {
       navigate(`/user/${post.profiles.id}`);
@@ -77,8 +108,10 @@ const ShhhhAudioPost = ({ post }: ShhhhAudioPostProps) => {
     <Card className="w-full max-w-md mx-auto">
       <CardContent className="p-0">
         <ShhhhAudioPostHeader 
-          post={post} 
-          onUserClick={handleUserClick} 
+          post={post}
+          currentUserId={user?.id}
+          onUserClick={handleUserClick}
+          onDelete={handleDelete}
         />
 
         <ShhhhAudioPostContent post={post} />

@@ -1,5 +1,5 @@
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import ShhhhAudioPost from './ShhhhAudioPost';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 const ShhhhFeed = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
   const { data: audioPosts, isLoading, error } = useQuery({
     queryKey: ['audio-posts', user?.id],
@@ -51,6 +52,11 @@ const ShhhhFeed = () => {
     },
   });
 
+  const handlePostDeleted = () => {
+    // Invalidar e refetch dos dados
+    queryClient.invalidateQueries({ queryKey: ['audio-posts', user?.id] });
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -92,7 +98,11 @@ const ShhhhFeed = () => {
   return (
     <div className="space-y-6">
       {audioPosts.map((post) => (
-        <ShhhhAudioPost key={post.id} post={post} />
+        <ShhhhAudioPost 
+          key={post.id} 
+          post={post} 
+          onPostDeleted={handlePostDeleted}
+        />
       ))}
     </div>
   );

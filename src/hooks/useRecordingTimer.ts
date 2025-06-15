@@ -1,7 +1,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 
-const MAX_RECORDING_TIME = 30; // 30 segundos
+const MAX_RECORDING_TIME = 20; // 20 segundos
 
 export const useRecordingTimer = () => {
   const [duration, setDuration] = useState(0);
@@ -14,9 +14,9 @@ export const useRecordingTimer = () => {
       setDuration(prev => {
         const newDuration = prev + 1;
         
-        // Parar automaticamente aos 30 segundos
+        // Parar automaticamente aos 20 segundos
         if (newDuration >= MAX_RECORDING_TIME) {
-          console.log('⏱️ [useRecordingTimer] Tempo máximo atingido (30s)');
+          console.log('⏱️ [useRecordingTimer] Tempo máximo atingido (20s)');
           if (onMaxTime) onMaxTime();
           return MAX_RECORDING_TIME;
         }

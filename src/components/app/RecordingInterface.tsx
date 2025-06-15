@@ -43,7 +43,7 @@ const RecordingInterface = ({
                 Parar Gravação
               </Button>
               <p className="text-sm text-muted-foreground animate-pulse">
-                Gravando... (máx. 60s)
+                Gravando... (máx. 20s)
               </p>
             </div>
           )}

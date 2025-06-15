@@ -12,7 +12,7 @@ const RecordingTimer = ({ duration, isRecording }: RecordingTimerProps) => {
   };
 
   const getRemainingTime = () => {
-    return Math.max(0, 60 - duration);
+    return Math.max(0, 20 - duration);
   };
 
   console.log('⏱️ [RecordingTimer] Props recebidas:', { duration, isRecording });
@@ -30,7 +30,7 @@ const RecordingTimer = ({ duration, isRecording }: RecordingTimerProps) => {
             Gravando
           </div>
           <div className="text-orange-600">
-            {getRemainingTime()}s restantes (máx. 60s)
+            {getRemainingTime()}s restantes (máx. 20s)
           </div>
         </div>
       )}

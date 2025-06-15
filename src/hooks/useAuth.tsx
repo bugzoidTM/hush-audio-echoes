@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -99,7 +98,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Forçar atualização da página após login bem-sucedido
       if (data.user) {
         setTimeout(() => {
-          window.location.href = '/app'; // Corrigido de '/shhhh' para '/app'
+          window.location.href = '/shhhh';
         }, 100);
       }
 
@@ -113,7 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       cleanupAuthState();
       
-      const redirectUrl = `${window.location.origin}/app`; // Corrigido de '/shhhh' para '/app'
+      const redirectUrl = `${window.location.origin}/shhhh`;
       
       const { data, error } = await supabase.auth.signUp({
         email,

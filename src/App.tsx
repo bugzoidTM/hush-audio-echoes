@@ -29,10 +29,9 @@ const AppRouter = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/app" element={<ShhhhApp />} />
+              <Route path="/shhhh" element={<ShhhhApp />} />
               <Route path="/simple" element={<SimpleApp />} />
               <Route path="/updated" element={<UpdatedApp />} />
-              <Route path="/shhhh" element={<ShhhhApp />} />
               <Route path="/user/:userId" element={<UserProfile />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/hashtag/:hashtag" element={<HashtagPage />} />

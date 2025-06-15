@@ -17,7 +17,7 @@ const Auth = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      navigate('/app'); // Corrigido de '/instagram' para '/app'
+      navigate('/shhhh');
     }
   }, [user, navigate]);
 

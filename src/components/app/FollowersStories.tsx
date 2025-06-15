@@ -12,22 +12,27 @@ const FollowersStories = () => {
     queryFn: async () => {
       if (!user) return [];
 
-      const { data: followers, error } = await supabase
+      // Primeiro, buscar os IDs dos usuários que estou seguindo
+      const { data: followingData, error: followingError } = await supabase
         .from('followers')
-        .select(`
-          following_id,
-          profiles:following_id (
-            id,
-            username,
-            display_name,
-            avatar_url
-          )
-        `)
+        .select('following_id')
         .eq('follower_id', user.id);
 
-      if (error) throw error;
+      if (followingError) throw followingError;
+      if (!followingData || followingData.length === 0) return [];
 
-      return followers?.map(f => f.profiles).filter(Boolean) || [];
+      // Extrair os IDs dos usuários seguidos
+      const followingIds = followingData.map(f => f.following_id);
+
+      // Buscar os perfis desses usuários
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .in('id', followingIds);
+
+      if (profilesError) throw profilesError;
+
+      return profiles || [];
     },
     enabled: !!user,
   });

@@ -8,7 +8,6 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import App from "./pages/App";
 import HashtagPage from "./pages/HashtagPage";
 import NotFound from "./pages/NotFound";
 import SimpleApp from "./pages/SimpleApp";
@@ -29,7 +28,6 @@ const AppRouter = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/app" element={<App />} />
               <Route path="/simple" element={<SimpleApp />} />
               <Route path="/updated" element={<UpdatedApp />} />
               <Route path="/instagram" element={<InstagramApp />} />

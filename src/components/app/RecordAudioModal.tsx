@@ -47,6 +47,7 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
   };
 
   const handleStopRecording = () => {
+    console.log('🎛️ [RecordAudioModal] Parando gravação com filtro:', selectedFilter);
     stopRecording(selectedFilter);
   };
 
@@ -56,8 +57,10 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
     setIsUploading(true);
 
     try {
-      // Upload audio file
-      const fileName = `${user.id}/${Date.now()}.webm`;
+      console.log('📤 [RecordAudioModal] Iniciando upload do áudio filtrado...');
+      
+      // Upload audio file (já com filtro aplicado)
+      const fileName = `${user.id}/${Date.now()}.wav`;
       const { error: uploadError } = await supabase.storage
         .from('audio-files')
         .upload(fileName, audioBlob);
@@ -69,7 +72,9 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
         .from('audio-files')
         .getPublicUrl(fileName);
 
-      // Create audio post
+      console.log('💾 [RecordAudioModal] Salvando post com filtro:', selectedFilter);
+
+      // Create audio post with filter information
       const { error: insertError } = await supabase
         .from('audio_posts')
         .insert({
@@ -79,13 +84,14 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
           audio_url: publicUrl,
           duration: duration,
           is_anonymous: isAnonymous,
+          voice_filter: selectedFilter,
         });
 
       if (insertError) throw insertError;
 
       toast({
         title: "Sucesso!",
-        description: "Áudio publicado com sucesso",
+        description: `Áudio publicado com filtro "${selectedFilter}"`,
       });
 
       // Refresh the feed
@@ -95,6 +101,7 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
       handleReset();
       onClose();
     } catch (error: any) {
+      console.error('❌ [RecordAudioModal] Erro ao publicar:', error);
       toast({
         title: "Erro",
         description: "Não foi possível publicar o áudio",
@@ -179,6 +186,10 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
                   onCheckedChange={setIsAnonymous}
                 />
                 <label className="text-sm font-medium">Publicar anonimamente</label>
+              </div>
+
+              <div className="text-sm text-muted-foreground">
+                Filtro aplicado: <span className="font-medium">{selectedFilter}</span>
               </div>
 
               <div className="flex space-x-2">

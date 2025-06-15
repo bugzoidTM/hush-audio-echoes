@@ -1,12 +1,19 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { applyVoiceFilter } from './voiceFilters';
 
-export const applyVoiceFilter = async (blob: Blob, filter: string): Promise<Blob> => {
-  // Esta função seria implementada com Web Audio API para aplicar filtros
-  // Por simplicidade, retornamos o blob original
-  // Em produção, você implementaria os filtros usando AudioContext
-  console.log(`Aplicando filtro: ${filter}`);
-  return blob;
+export const processAndApplyVoiceFilter = async (blob: Blob, filter: string): Promise<Blob> => {
+  console.log('🎛️ [audioProcessingUtils] Processando áudio com filtro:', filter);
+  
+  try {
+    const filteredBlob = await applyVoiceFilter(blob, filter as any);
+    console.log('✅ [audioProcessingUtils] Filtro aplicado - tamanho final:', filteredBlob.size, 'bytes');
+    return filteredBlob;
+  } catch (error) {
+    console.error('❌ [audioProcessingUtils] Erro ao aplicar filtro:', error);
+    console.log('🔄 [audioProcessingUtils] Usando áudio original sem filtro');
+    return blob;
+  }
 };
 
 export const transcribeAudio = async (audioBlob: Blob, enableTranscription: boolean): Promise<string | null> => {

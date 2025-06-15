@@ -15,79 +15,147 @@ export const voiceFilters: VoiceFilterOption[] = [
 ];
 
 export const applyVoiceFilter = async (audioBlob: Blob, filter: VoiceFilter): Promise<Blob> => {
-  console.log('🎛️ Aplicando filtro de voz:', filter);
+  console.log('🎛️ [voiceFilters] Aplicando filtro:', filter);
   
   if (filter === 'normal') {
+    console.log('✅ [voiceFilters] Filtro normal - retornando áudio original');
     return audioBlob;
   }
 
   try {
+    // Create audio context
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
     
+    // Convert blob to array buffer
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    console.log('📥 [voiceFilters] ArrayBuffer obtido, tamanho:', arrayBuffer.byteLength);
+    
+    // Decode audio data
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    console.log('🔊 [voiceFilters] AudioBuffer decodificado:', {
+      duration: audioBuffer.duration,
+      channels: audioBuffer.numberOfChannels,
+      sampleRate: audioBuffer.sampleRate
+    });
+    
+    // Create new buffer for processed audio
     const filteredBuffer = audioContext.createBuffer(
       audioBuffer.numberOfChannels,
       audioBuffer.length,
       audioBuffer.sampleRate
     );
     
+    // Process each channel
     for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
       const inputData = audioBuffer.getChannelData(channel);
       const outputData = filteredBuffer.getChannelData(channel);
       
-      for (let i = 0; i < inputData.length; i++) {
-        let sample = inputData[i];
-        
-        switch (filter) {
-          case 'helium':
-            // Simple pitch shifting approximation
-            sample = sample * 1.5;
-            break;
-          case 'robot':
-            // Add digital distortion
-            sample = sample > 0 ? 0.3 : -0.3;
-            break;
-          case 'deep':
-            // Lower pitch approximation
-            sample = sample * 0.7;
-            break;
-          case 'echo':
-            // Simple echo effect
-            const delay = Math.floor(audioBuffer.sampleRate * 0.3);
-            if (i >= delay) {
-              sample = sample + inputData[i - delay] * 0.3;
-            }
-            break;
-        }
-        
-        outputData[i] = Math.max(-1, Math.min(1, sample));
+      // Apply filter based on type
+      switch (filter) {
+        case 'helium':
+          applyHeliumFilter(inputData, outputData, audioBuffer.sampleRate);
+          break;
+        case 'robot':
+          applyRobotFilter(inputData, outputData);
+          break;
+        case 'deep':
+          applyDeepFilter(inputData, outputData, audioBuffer.sampleRate);
+          break;
+        case 'echo':
+          applyEchoFilter(inputData, outputData, audioBuffer.sampleRate);
+          break;
+        default:
+          // Copy original data
+          outputData.set(inputData);
       }
     }
     
-    // Convert back to blob
-    const offlineContext = new OfflineAudioContext(
-      filteredBuffer.numberOfChannels,
-      filteredBuffer.length,
-      filteredBuffer.sampleRate
-    );
+    console.log('🎯 [voiceFilters] Filtro aplicado, convertendo para WAV...');
     
-    const source = offlineContext.createBufferSource();
-    source.buffer = filteredBuffer;
-    source.connect(offlineContext.destination);
-    source.start();
+    // Convert filtered buffer to WAV
+    const wavBuffer = audioBufferToWav(filteredBuffer);
+    const filteredBlob = new Blob([wavBuffer], { type: 'audio/wav' });
     
-    const renderedBuffer = await offlineContext.startRendering();
+    console.log('✅ [voiceFilters] Filtro aplicado com sucesso. Tamanho final:', filteredBlob.size);
     
-    // Convert to WAV format
-    const wav = audioBufferToWav(renderedBuffer);
-    return new Blob([wav], { type: 'audio/wav' });
+    // Clean up
+    await audioContext.close();
+    
+    return filteredBlob;
     
   } catch (error) {
-    console.error('❌ Erro ao aplicar filtro:', error);
+    console.error('❌ [voiceFilters] Erro ao aplicar filtro:', error);
     return audioBlob; // Return original if filtering fails
   }
 };
+
+// Filter implementations
+function applyHeliumFilter(inputData: Float32Array, outputData: Float32Array, sampleRate: number) {
+  // Pitch shifting approximation - speed up and maintain pitch
+  const pitchFactor = 1.5;
+  const windowSize = 1024;
+  
+  for (let i = 0; i < outputData.length; i++) {
+    const sourceIndex = Math.floor(i / pitchFactor);
+    if (sourceIndex < inputData.length) {
+      outputData[i] = inputData[sourceIndex] * 0.8; // Slight volume reduction
+    } else {
+      outputData[i] = 0;
+    }
+  }
+}
+
+function applyRobotFilter(inputData: Float32Array, outputData: Float32Array) {
+  // Bit crushing and digital distortion
+  const bitDepth = 4; // Reduce bit depth for robotic sound
+  const factor = Math.pow(2, bitDepth - 1);
+  
+  for (let i = 0; i < inputData.length; i++) {
+    // Quantize the signal
+    let sample = inputData[i];
+    sample = Math.round(sample * factor) / factor;
+    
+    // Add some digital distortion
+    sample = Math.tanh(sample * 2) * 0.7;
+    
+    outputData[i] = sample;
+  }
+}
+
+function applyDeepFilter(inputData: Float32Array, outputData: Float32Array, sampleRate: number) {
+  // Pitch shift down and add some low-pass filtering
+  const pitchFactor = 0.7;
+  
+  for (let i = 0; i < outputData.length; i++) {
+    const sourceIndex = Math.floor(i / pitchFactor);
+    if (sourceIndex < inputData.length) {
+      outputData[i] = inputData[sourceIndex] * 1.2; // Slight volume boost
+    } else {
+      outputData[i] = 0;
+    }
+  }
+  
+  // Simple low-pass filter
+  for (let i = 1; i < outputData.length; i++) {
+    outputData[i] = outputData[i] * 0.7 + outputData[i - 1] * 0.3;
+  }
+}
+
+function applyEchoFilter(inputData: Float32Array, outputData: Float32Array, sampleRate: number) {
+  const delayTime = 0.3; // 300ms delay
+  const delaySamples = Math.floor(delayTime * sampleRate);
+  const feedback = 0.4;
+  const wetness = 0.5;
+  
+  // Copy original signal
+  outputData.set(inputData);
+  
+  // Add echo
+  for (let i = delaySamples; i < outputData.length; i++) {
+    const echoSample = outputData[i - delaySamples] * feedback;
+    outputData[i] = outputData[i] * (1 - wetness) + echoSample * wetness;
+  }
+}
 
 // Helper function to convert AudioBuffer to WAV
 function audioBufferToWav(buffer: AudioBuffer): ArrayBuffer {

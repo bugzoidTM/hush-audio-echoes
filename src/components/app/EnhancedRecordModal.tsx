@@ -9,7 +9,7 @@ import VoiceFilters from './VoiceFilters';
 import RecordingInterface from './RecordingInterface';
 import AudioPostForm from './AudioPostForm';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
-import { applyVoiceFilter, transcribeAudio, uploadAudioFile } from '@/utils/audioProcessingUtils';
+import { processAndApplyVoiceFilter, transcribeAudio, uploadAudioFile } from '@/utils/audioProcessingUtils';
 
 interface EnhancedRecordModalProps {
   open: boolean;
@@ -44,16 +44,20 @@ const EnhancedRecordModal = ({ open, onClose }: EnhancedRecordModalProps) => {
     setIsUploading(true);
 
     try {
-      // Aplicar filtro de voz
-      const filteredBlob = await applyVoiceFilter(recordedBlob, selectedFilter);
+      console.log('🎛️ [EnhancedRecordModal] Aplicando filtro antes do upload:', selectedFilter);
+      
+      // Aplicar filtro de voz antes do upload
+      const filteredBlob = await processAndApplyVoiceFilter(recordedBlob, selectedFilter);
 
-      // Upload do arquivo de áudio
+      // Upload do arquivo de áudio filtrado
       const publicUrl = await uploadAudioFile(filteredBlob, user.id);
 
       // Transcrever áudio se habilitado
       const transcription = await transcribeAudio(filteredBlob, enableTranscription);
 
-      // Criar post de áudio
+      console.log('💾 [EnhancedRecordModal] Salvando post com filtro:', selectedFilter);
+
+      // Criar post de áudio com informação do filtro
       const { error: insertError } = await supabase
         .from('audio_posts')
         .insert({
@@ -64,13 +68,14 @@ const EnhancedRecordModal = ({ open, onClose }: EnhancedRecordModalProps) => {
           duration: duration,
           transcription: transcription,
           is_anonymous: isAnonymous,
+          voice_filter: selectedFilter,
         });
 
       if (insertError) throw insertError;
 
       toast({
         title: "Sucesso!",
-        description: "Áudio publicado com sucesso",
+        description: `Áudio publicado com filtro "${selectedFilter}"`,
       });
 
       // Refresh do feed
@@ -80,7 +85,7 @@ const EnhancedRecordModal = ({ open, onClose }: EnhancedRecordModalProps) => {
       handleReset();
       onClose();
     } catch (error: any) {
-      console.error('Erro ao publicar:', error);
+      console.error('❌ [EnhancedRecordModal] Erro ao publicar:', error);
       toast({
         title: "Erro",
         description: "Não foi possível publicar o áudio",
@@ -131,19 +136,25 @@ const EnhancedRecordModal = ({ open, onClose }: EnhancedRecordModalProps) => {
           )}
 
           {recordedBlob && (
-            <AudioPostForm
-              title={title}
-              description={description}
-              isAnonymous={isAnonymous}
-              enableTranscription={enableTranscription}
-              isUploading={isUploading}
-              onTitleChange={setTitle}
-              onDescriptionChange={setDescription}
-              onAnonymousChange={setIsAnonymous}
-              onTranscriptionChange={setEnableTranscription}
-              onSubmit={handleSubmit}
-              onCancel={onClose}
-            />
+            <>
+              <div className="text-sm text-muted-foreground">
+                Filtro selecionado: <span className="font-medium">{selectedFilter}</span>
+              </div>
+              
+              <AudioPostForm
+                title={title}
+                description={description}
+                isAnonymous={isAnonymous}
+                enableTranscription={enableTranscription}
+                isUploading={isUploading}
+                onTitleChange={setTitle}
+                onDescriptionChange={setDescription}
+                onAnonymousChange={setIsAnonymous}
+                onTranscriptionChange={setEnableTranscription}
+                onSubmit={handleSubmit}
+                onCancel={onClose}
+              />
+            </>
           )}
         </div>
       </DialogContent>

@@ -3,7 +3,7 @@ import { useState, useRef, useCallback } from 'react';
 import { VoiceFilter } from '@/utils/voiceFilters';
 import { useRecordingTimer } from './useRecordingTimer';
 import { useMediaRecorder } from './useMediaRecorder';
-import { processRecordedAudio } from '@/utils/audioRecordingUtils';
+import { processAndApplyVoiceFilter } from '@/utils/audioProcessingUtils';
 
 export const useAudioRecording = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -24,11 +24,12 @@ export const useAudioRecording = () => {
 
   const handleRecordingStop = useCallback(async (blob: Blob) => {
     console.log('⏹️ [useAudioRecording] === MediaRecorder PARADO ===');
+    console.log('🎛️ [useAudioRecording] Aplicando filtro:', voiceFilterRef.current);
     
     try {
-      const filteredBlob = await processRecordedAudio(blob, voiceFilterRef.current);
+      const filteredBlob = await processAndApplyVoiceFilter(blob, voiceFilterRef.current);
       setAudioBlob(filteredBlob);
-      console.log('✅ [useAudioRecording] === GRAVAÇÃO FINALIZADA COM SUCESSO ===');
+      console.log('✅ [useAudioRecording] === GRAVAÇÃO FINALIZADA COM FILTRO APLICADO ===');
     } catch (error) {
       console.error('❌ [useAudioRecording] Erro no processamento:', error);
       setAudioBlob(blob);
@@ -61,14 +62,14 @@ export const useAudioRecording = () => {
 
   const stopRecording = useCallback((voiceFilter: VoiceFilter = 'normal') => {
     console.log('🛑 [useAudioRecording] === PARANDO GRAVAÇÃO ===');
-    console.log('🛑 [useAudioRecording] Filtro solicitado:', voiceFilter);
+    console.log('🛑 [useAudioRecording] Filtro a ser aplicado:', voiceFilter);
     
     voiceFilterRef.current = voiceFilter;
     setIsRecording(false);
     stopTimer();
     stopMediaRecording();
     
-    console.log('✅ [useAudioRecording] Comando de parada enviado');
+    console.log('✅ [useAudioRecording] Comando de parada enviado com filtro:', voiceFilter);
   }, [stopTimer, stopMediaRecording]);
 
   const playAudio = useCallback(() => {

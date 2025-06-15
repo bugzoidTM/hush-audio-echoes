@@ -96,10 +96,10 @@ const SimpleAudioFeed = () => {
           const postLikes = likesData?.filter(like => like.audio_id === post.id) || [];
           const postReposts = repostsData?.filter(repost => repost.original_audio_id === post.id) || [];
           
-          // Calcular likes_count baseado nos dados reais da tabela likes
+          // Usar SEMPRE o count real dos likes ao invés do valor salvo no post
           const actualLikesCount = postLikes.length;
           
-          console.log(`📊 Post ${post.id}: likes na tabela=${actualLikesCount}, likes no post=${post.likes_count}`);
+          console.log(`📊 Post ${post.id}: likes reais=${actualLikesCount}, likes salvos=${post.likes_count}`);
           
           return {
             ...post,
@@ -108,7 +108,7 @@ const SimpleAudioFeed = () => {
               avatar_url: profile.avatar_url
             } : null,
             likes: postLikes,
-            likes_count: actualLikesCount, // Usar o count real dos likes
+            likes_count: actualLikesCount, // SEMPRE usar o count real
             reposts: postReposts,
             reposts_count: postReposts.length
           };
@@ -123,6 +123,8 @@ const SimpleAudioFeed = () => {
       }
     },
     refetchInterval: 30000,
+    staleTime: 1000 * 60 * 5, // 5 minutos antes de considerar stale
+    gcTime: 1000 * 60 * 60 * 24, // 24 horas para garbage collection
   });
 
   if (isLoading) {

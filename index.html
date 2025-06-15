@@ -1,68 +1,29 @@
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Shhhh - Sua voz, seu tempo | Rede Social de Áudio Temporário</title>
-    <meta name="description" content="Compartilhe áudios autênticos que desaparecem em 24 horas. Conecte-se através da voz no Shhhh - a rede social de áudio temporário que liberta sua expressão." />
-    <meta name="keywords" content="áudio temporário, rede social áudio, gravação voz, áudio 24 horas, compartilhar áudio, voz autêntica, mídia temporária, stories áudio" />
-    <meta name="author" content="Shhhh Audio Social Network" />
-    <meta name="robots" content="index, follow" />
-    <meta name="language" content="pt-BR" />
     
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Shhhh - Sua voz, seu tempo | Rede Social de Áudio Temporário" />
-    <meta property="og:description" content="Compartilhe áudios autênticos que desaparecem em 24 horas. Conecte-se através da voz no Shhhh - a rede social de áudio temporário que liberta sua expressão." />
-    <meta property="og:url" content="https://shhhh.lovable.app" />
-    <meta property="og:image" content="/lovable-uploads/a384c699-fcd9-4ac6-bcf9-612e01bab15d.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:site_name" content="Shhhh" />
-    <meta property="og:locale" content="pt_BR" />
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Shhhh - Sua voz, seu tempo | Rede Social de Áudio Temporário" />
-    <meta name="twitter:description" content="Compartilhe áudios autênticos que desaparecem em 24 horas. Conecte-se através da voz no Shhhh - a rede social de áudio temporário que liberta sua expressão." />
-    <meta name="twitter:image" content="/lovable-uploads/a384c699-fcd9-4ac6-bcf9-612e01bab15d.png" />
-    <meta name="twitter:site" content="@shhhh_audio" />
-
-    <!-- Favicon -->
-    <link rel="icon" href="/lovable-uploads/a384c699-fcd9-4ac6-bcf9-612e01bab15d.png" type="image/png">
-    <link rel="apple-touch-icon" href="/lovable-uploads/a384c699-fcd9-4ac6-bcf9-612e01bab15d.png">
+    <!-- Cache Control - Expira em 24 horas -->
+    <meta http-equiv="Cache-Control" content="public, max-age=86400">
+    <meta http-equiv="Expires" content="86400">
+    <meta http-equiv="Pragma" content="cache">
     
-    <!-- Additional SEO -->
-    <link rel="canonical" href="https://shhhh.lovable.app" />
-    <meta name="theme-color" content="#7C3AED" />
-    
-    <!-- Schema.org structured data -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "Shhhh",
-      "description": "Rede social de áudio temporário onde você compartilha áudios autênticos que desaparecem em 24 horas",
-      "url": "https://shhhh.lovable.app",
-      "applicationCategory": "SocialNetworkingApplication",
-      "operatingSystem": "Web",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "BRL"
-      },
-      "featureList": [
-        "Gravação de áudio com filtros de voz",
-        "Compartilhamento temporário (24 horas)",
-        "Desafios diários de áudio",
-        "Grupos privados",
-        "Feed de áudios temporários"
-      ]
-    }
+    <!-- Service Worker para controle de cache -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {
+            // Service worker registration failed, but app should still work
+          });
+        });
+      }
     </script>
+    
+    <title>Shhhh - Rede Social de Áudios Efêmeros</title>
   </head>
-
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

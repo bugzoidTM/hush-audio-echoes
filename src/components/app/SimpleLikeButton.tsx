@@ -5,6 +5,7 @@ import { Heart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface SimpleLikeButtonProps {
   postId: string;
@@ -19,30 +20,37 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
   
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
+  // Inicializar estado baseado nos dados do servidor
   useEffect(() => {
     if (user && userLikes) {
       const userHasLiked = userLikes.some(like => like.user_id === user.id);
       setIsLiked(userHasLiked);
       console.log(`💖 Post ${postId}: User ${user.id} liked? ${userHasLiked}`);
+    } else {
+      setIsLiked(false);
     }
   }, [user, userLikes, postId]);
 
+  // Atualizar likes count apenas quando os dados do servidor mudarem
   useEffect(() => {
+    console.log(`📊 Post ${postId}: Atualizando likesCount de ${likesCount} para ${initialLikesCount}`);
     setLikesCount(initialLikesCount || 0);
-    console.log(`📊 Post ${postId}: Atualizando likesCount para ${initialLikesCount}`);
   }, [initialLikesCount, postId]);
 
   const toggleLike = async () => {
     if (!user || isLoading) return;
 
     setIsLoading(true);
+    
+    // Guardar estado anterior para rollback
     const previousIsLiked = isLiked;
     const previousLikesCount = likesCount;
 
     try {
       if (isLiked) {
-        // Optimistic update
+        // Update otimista primeiro
         setIsLiked(false);
         setLikesCount(prev => Math.max(0, prev - 1));
 
@@ -54,8 +62,25 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
           .eq('user_id', user.id);
 
         if (error) throw error;
+
+        // Atualizar o cache do query client com novos dados
+        queryClient.setQueryData(['audio-posts'], (oldData: any) => {
+          if (!oldData) return oldData;
+          
+          return oldData.map((post: any) => {
+            if (post.id === postId) {
+              return {
+                ...post,
+                likes: post.likes.filter((like: any) => like.user_id !== user.id),
+                likes_count: Math.max(0, post.likes_count - 1)
+              };
+            }
+            return post;
+          });
+        });
+
       } else {
-        // Optimistic update
+        // Update otimista primeiro
         setIsLiked(true);
         setLikesCount(prev => prev + 1);
 
@@ -68,9 +93,25 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
           });
 
         if (error) throw error;
+
+        // Atualizar o cache do query client com novos dados
+        queryClient.setQueryData(['audio-posts'], (oldData: any) => {
+          if (!oldData) return oldData;
+          
+          return oldData.map((post: any) => {
+            if (post.id === postId) {
+              return {
+                ...post,
+                likes: [...post.likes, { user_id: user.id }],
+                likes_count: post.likes_count + 1
+              };
+            }
+            return post;
+          });
+        });
       }
 
-      console.log(`✅ Like processado com sucesso para post ${postId}. Novo estado: liked=${!previousIsLiked}, count=${likesCount}`);
+      console.log(`✅ Like processado com sucesso para post ${postId}. Novo estado: liked=${!previousIsLiked}, count=${!previousIsLiked ? previousLikesCount + 1 : previousLikesCount - 1}`);
 
     } catch (error) {
       console.error('❌ Erro ao curtir post:', error);

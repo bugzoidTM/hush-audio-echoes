@@ -11,38 +11,26 @@ interface SimpleLikeButtonProps {
   postId: string;
   initialLikesCount: number;
   userLikes?: Array<{ user_id: string }>;
-  onLikeChange?: (liked: boolean, newCount: number) => void;
 }
 
-const SimpleLikeButton = ({ postId, initialLikesCount, userLikes, onLikeChange }: SimpleLikeButtonProps) => {
+const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeButtonProps) => {
   const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Sempre sincronizar com os dados mais recentes
+  // Verificar se usuário curtiu baseado nos dados recebidos
   useEffect(() => {
-    console.log(`🔄 [SimpleLikeButton] Sincronizando dados para post ${postId}:`, {
-      initialLikesCount,
-      userLikesLength: userLikes?.length || 0,
-      userId: user?.id
-    });
-
-    // Usar contagem inicial como base
-    setLikesCount(initialLikesCount || 0);
-    
-    // Verificar se usuário curtiu
     if (user && userLikes) {
       const userHasLiked = userLikes.some(like => like.user_id === user.id);
       setIsLiked(userHasLiked);
-      console.log(`👤 [SimpleLikeButton] Usuário ${userHasLiked ? 'curtiu' : 'não curtiu'} o post ${postId}`);
+      console.log(`👤 [SimpleLikeButton] Post ${postId} - Usuário ${userHasLiked ? 'curtiu' : 'não curtiu'}`);
     } else {
       setIsLiked(false);
     }
-  }, [user?.id, userLikes, initialLikesCount, postId]);
+  }, [user?.id, userLikes, postId]);
 
   const toggleLike = async () => {
     if (!user || isLoading) {
@@ -51,15 +39,10 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes, onLikeChange }
     }
 
     setIsLoading(true);
-    const previousIsLiked = isLiked;
-    const previousCount = likesCount;
     
     try {
       if (isLiked) {
-        // Remover like - atualização otimista
         console.log(`👎 [SimpleLikeButton] Removendo like do post ${postId}`);
-        setIsLiked(false);
-        setLikesCount(prev => Math.max(0, prev - 1));
         
         const { error } = await supabase
           .from('likes')
@@ -69,17 +52,8 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes, onLikeChange }
 
         if (error) throw error;
 
-        // Notificar mudança para componente pai
-        const newCount = Math.max(0, previousCount - 1);
-        if (onLikeChange) {
-          onLikeChange(false, newCount);
-        }
-
       } else {
-        // Adicionar like - atualização otimista
         console.log(`👍 [SimpleLikeButton] Adicionando like ao post ${postId}`);
-        setIsLiked(true);
-        setLikesCount(prev => prev + 1);
         
         const { error } = await supabase
           .from('likes')
@@ -89,12 +63,6 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes, onLikeChange }
           });
 
         if (error) throw error;
-
-        // Notificar mudança para componente pai
-        const newCount = previousCount + 1;
-        if (onLikeChange) {
-          onLikeChange(true, newCount);
-        }
       }
 
       console.log(`✅ [SimpleLikeButton] Like processado com sucesso para post ${postId}`);
@@ -107,14 +75,6 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes, onLikeChange }
 
     } catch (error) {
       console.error('❌ [SimpleLikeButton] Erro ao processar like:', error);
-      
-      // Reverter mudanças otimistas em caso de erro
-      setIsLiked(previousIsLiked);
-      setLikesCount(previousCount);
-      
-      if (onLikeChange) {
-        onLikeChange(previousIsLiked, previousCount);
-      }
       
       toast({
         title: "Erro",
@@ -139,7 +99,7 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes, onLikeChange }
           isLiked ? 'fill-red-500 text-red-500' : 'text-muted-foreground'
         } ${isLoading ? 'opacity-50' : ''}`} 
       />
-      <span className="text-sm">{likesCount}</span>
+      <span className="text-sm">{initialLikesCount}</span>
     </Button>
   );
 };

@@ -31,7 +31,7 @@ const SimpleAudioFeed = () => {
       console.log('🎵 [SimpleAudioFeed] Buscando posts de áudio...');
       
       try {
-        // 1. Buscar posts básicos
+        // 1. Buscar posts básicos com likes_count do banco
         const { data: postsData, error: postsError } = await supabase
           .from('audio_posts')
           .select('*')
@@ -61,7 +61,7 @@ const SimpleAudioFeed = () => {
           console.error('❌ [SimpleAudioFeed] Erro ao buscar profiles:', profilesError);
         }
 
-        // 3. Buscar todos os likes de uma vez
+        // 3. Buscar todos os likes de uma vez (para determinar quais o usuário curtiu)
         const postIds = postsData.map(post => post.id);
         const { data: likesData, error: likesError } = await supabase
           .from('likes')
@@ -88,12 +88,7 @@ const SimpleAudioFeed = () => {
           const postLikes = likesData?.filter(like => like.audio_id === post.id) || [];
           const postReposts = repostsData?.filter(repost => repost.original_audio_id === post.id) || [];
           
-          // Usar contagem real dos likes, não a do cache
-          const realLikesCount = postLikes.length;
-          
-          console.log(`📊 [SimpleAudioFeed] Post ${post.id} - Likes: ${realLikesCount}`, {
-            dbCount: post.likes_count,
-            realCount: realLikesCount,
+          console.log(`📊 [SimpleAudioFeed] Post ${post.id} - Likes no DB: ${post.likes_count}`, {
             likesArray: postLikes.length
           });
           
@@ -104,7 +99,8 @@ const SimpleAudioFeed = () => {
               avatar_url: profile.avatar_url
             } : null,
             likes: postLikes,
-            likes_count: realLikesCount, // SEMPRE usar contagem real
+            // Usar likes_count do banco de dados (que é atualizado pelo trigger)
+            likes_count: post.likes_count || 0,
             reposts: postReposts,
             reposts_count: postReposts.length
           };
@@ -118,10 +114,10 @@ const SimpleAudioFeed = () => {
         throw error;
       }
     },
-    staleTime: 1000 * 10, // 10 segundos - mais agressivo para atualizações
-    gcTime: 1000 * 60 * 2, // 2 minutos - cache menor
+    staleTime: 1000 * 5, // 5 segundos
+    gcTime: 1000 * 60 * 2, // 2 minutos
     refetchOnMount: true,
-    refetchOnWindowFocus: true, // Reativar para garantir dados frescos
+    refetchOnWindowFocus: true,
     refetchInterval: false,
   });
 

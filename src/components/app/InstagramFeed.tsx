@@ -13,7 +13,7 @@ const InstagramFeed = () => {
         .from('audio_posts')
         .select(`
           *,
-          profiles!audio_posts_user_id_fkey (
+          profiles (
             username,
             display_name,
             avatar_url

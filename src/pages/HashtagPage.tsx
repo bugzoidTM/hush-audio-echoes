@@ -1,4 +1,3 @@
-
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,7 +21,7 @@ const HashtagPage = () => {
         .from('audio_posts')
         .select(`
           *,
-          profiles!audio_posts_user_id_fkey (
+          profiles (
             username,
             display_name,
             avatar_url

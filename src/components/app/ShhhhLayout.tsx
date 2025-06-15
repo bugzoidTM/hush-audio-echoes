@@ -2,6 +2,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 import RecordAudioModal from './RecordAudioModal';
 import FollowersStories from './FollowersStories';
 import SidebarNavigation from './SidebarNavigation';
@@ -18,6 +19,7 @@ const ShhhhLayout = ({ children, onSectionChange }: ShhhhLayoutProps) => {
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [activeSection, setActiveSection] = useState('home');
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
@@ -40,6 +42,11 @@ const ShhhhLayout = ({ children, onSectionChange }: ShhhhLayoutProps) => {
   const handleSectionChange = (section: string) => {
     setActiveSection(section);
     onSectionChange?.(section);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
   };
 
   return (
@@ -68,7 +75,7 @@ const ShhhhLayout = ({ children, onSectionChange }: ShhhhLayoutProps) => {
           <UserProfileSection 
             userProfile={userProfile}
             displayName={displayName}
-            onSignOut={signOut}
+            onSignOut={handleSignOut}
           />
         </div>
       </div>

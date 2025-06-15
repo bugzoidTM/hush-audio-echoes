@@ -3,11 +3,18 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { User, LogOut, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import SimpleRecordModal from './SimpleRecordModal';
 
 const SimpleAppHeader = () => {
   const { user, signOut } = useAuth();
   const [showRecordModal, setShowRecordModal] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
 
   return (
     <>
@@ -33,7 +40,7 @@ const SimpleAppHeader = () => {
             </div>
             
             <Button
-              onClick={signOut}
+              onClick={handleSignOut}
               variant="outline"
               size="sm"
             >

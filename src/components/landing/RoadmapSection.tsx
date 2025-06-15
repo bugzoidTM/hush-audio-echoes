@@ -1,6 +1,6 @@
+
 import { Check, Star, Clock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import FeedbackModal from "./FeedbackModal";
 
 const RoadmapSection = () => {
   const betaFeatures = [
@@ -121,14 +121,6 @@ const RoadmapSection = () => {
             </ul>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Call to Action */}
-      <div className="text-center mt-12">
-        <p className="text-gray-600 mb-4">
-          Quer influenciar o desenvolvimento do Shhhh?
-        </p>
-        <FeedbackModal />
       </div>
     </section>
   );

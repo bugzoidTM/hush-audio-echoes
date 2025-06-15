@@ -99,7 +99,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Forçar atualização da página após login bem-sucedido
       if (data.user) {
         setTimeout(() => {
-          window.location.href = '/app';
+          window.location.href = '/instagram';
         }, 100);
       }
 
@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       cleanupAuthState();
       
-      const redirectUrl = `${window.location.origin}/app`;
+      const redirectUrl = `${window.location.origin}/instagram`;
       
       const { data, error } = await supabase.auth.signUp({
         email,

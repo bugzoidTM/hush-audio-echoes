@@ -13,7 +13,7 @@ const InstagramFeed = () => {
         .from('audio_posts')
         .select(`
           *,
-          profiles:profiles!audio_posts_user_id_fkey (
+          profiles!inner(
             username,
             display_name,
             avatar_url
@@ -32,7 +32,11 @@ const InstagramFeed = () => {
         ...post,
         replies_count: post.replies_count || 0,
         reposts_count: post.reposts_count || 0,
-        profiles: post.profiles || { username: null, display_name: null, avatar_url: null }
+        profiles: {
+          username: post.profiles?.username || null,
+          display_name: post.profiles?.display_name || null,
+          avatar_url: post.profiles?.avatar_url || null
+        }
       })) || [];
     },
   });

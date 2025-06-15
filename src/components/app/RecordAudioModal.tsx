@@ -1,15 +1,19 @@
 
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Mic, Square, Play, Pause } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { VoiceFilter } from '@/utils/voiceFilters';
+import { useAudioRecording } from '@/hooks/useAudioRecording';
+import RecordingControls from './RecordingControls';
+import RecordingTimer from './RecordingTimer';
+import VoiceFilterSelector from './VoiceFilterSelector';
 
 interface RecordAudioModalProps {
   open: boolean;
@@ -21,64 +25,42 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<VoiceFilter>('normal');
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      const chunks: BlobPart[] = [];
+  const {
+    isRecording,
+    audioBlob,
+    isPlaying,
+    duration,
+    startRecording,
+    stopRecording,
+    playAudio,
+    cleanup
+  } = useAudioRecording();
 
-      mediaRecorder.ondataavailable = (event) => {
-        chunks.push(event.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/wav' });
-        setRecordedBlob(blob);
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-
-      // Auto-stop after 60 seconds
-      setTimeout(() => {
-        if (mediaRecorder.state === 'recording') {
-          mediaRecorder.stop();
-          setIsRecording(false);
-        }
-      }, 60000);
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível acessar o microfone",
-        variant: "destructive",
-      });
-    }
+  const handleStartRecording = () => {
+    startRecording();
   };
 
-  const stopRecording = () => {
-    setIsRecording(false);
+  const handleStopRecording = () => {
+    stopRecording(selectedFilter);
   };
 
   const handleSubmit = async () => {
-    if (!recordedBlob || !user) return;
+    if (!audioBlob || !user) return;
 
     setIsUploading(true);
 
     try {
       // Upload audio file
-      const fileName = `${user.id}/${Date.now()}.wav`;
+      const fileName = `${user.id}/${Date.now()}.webm`;
       const { error: uploadError } = await supabase.storage
         .from('audio-files')
-        .upload(fileName, recordedBlob);
+        .upload(fileName, audioBlob);
 
       if (uploadError) throw uploadError;
 
@@ -95,7 +77,7 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
           title: title || null,
           description: description || null,
           audio_url: publicUrl,
-          duration: 30, // Placeholder - would be calculated from actual audio
+          duration: duration,
           is_anonymous: isAnonymous,
         });
 
@@ -110,10 +92,7 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
       queryClient.invalidateQueries({ queryKey: ['audio-posts'] });
 
       // Reset form and close
-      setTitle('');
-      setDescription('');
-      setIsAnonymous(false);
-      setRecordedBlob(null);
+      handleReset();
       onClose();
     } catch (error: any) {
       toast({
@@ -126,68 +105,54 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
     }
   };
 
+  const handleReset = () => {
+    setTitle('');
+    setDescription('');
+    setIsAnonymous(false);
+    setSelectedFilter('normal');
+    cleanup();
+  };
+
+  const handleClose = () => {
+    handleReset();
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Gravar Áudio</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
+          {/* Recording Timer */}
+          <RecordingTimer duration={duration} isRecording={isRecording} />
+
           {/* Recording Controls */}
-          <div className="text-center space-y-4">
-            {!recordedBlob ? (
-              <div className="space-y-4">
-                <div className="w-24 h-24 mx-auto gradient-bg rounded-full flex items-center justify-center">
-                  <Mic className="w-12 h-12 text-white" />
-                </div>
-                
-                {!isRecording ? (
-                  <Button onClick={startRecording} className="gradient-bg">
-                    <Mic className="w-4 h-4 mr-2" />
-                    Começar Gravação
-                  </Button>
-                ) : (
-                  <Button onClick={stopRecording} variant="destructive">
-                    <Square className="w-4 h-4 mr-2" />
-                    Parar Gravação
-                  </Button>
-                )}
-                
-                {isRecording && (
-                  <p className="text-sm text-muted-foreground animate-pulse">
-                    Gravando... (máx. 60s)
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="p-4 bg-muted rounded-lg">
-                  <div className="flex items-center justify-center space-x-4">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setIsPlaying(!isPlaying)}
-                    >
-                      {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                    </Button>
-                    <span className="text-sm">Áudio gravado com sucesso!</span>
-                  </div>
-                </div>
-                
-                <Button
-                  variant="outline"
-                  onClick={() => setRecordedBlob(null)}
-                  size="sm"
-                >
-                  Gravar Novamente
-                </Button>
-              </div>
-            )}
+          <div className="flex justify-center">
+            <RecordingControls
+              isRecording={isRecording}
+              isPlaying={isPlaying}
+              audioBlob={audioBlob}
+              isUploading={isUploading}
+              onStartRecording={handleStartRecording}
+              onStopRecording={handleStopRecording}
+              onPlayAudio={playAudio}
+            />
           </div>
 
+          {/* Voice Filter Selector */}
+          {!isRecording && (
+            <VoiceFilterSelector
+              value={selectedFilter}
+              onChange={setSelectedFilter}
+              disabled={isRecording || isUploading}
+            />
+          )}
+
           {/* Form Fields */}
-          {recordedBlob && (
+          {audioBlob && (
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Título (opcional)</label>
@@ -218,7 +183,7 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
 
               <div className="flex space-x-2">
                 <Button
-                  onClick={onClose}
+                  onClick={handleClose}
                   variant="outline"
                   className="flex-1"
                 >

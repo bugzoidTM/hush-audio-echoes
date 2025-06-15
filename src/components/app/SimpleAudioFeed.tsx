@@ -96,6 +96,11 @@ const SimpleAudioFeed = () => {
           const postLikes = likesData?.filter(like => like.audio_id === post.id) || [];
           const postReposts = repostsData?.filter(repost => repost.original_audio_id === post.id) || [];
           
+          // Calcular likes_count baseado nos dados reais da tabela likes
+          const actualLikesCount = postLikes.length;
+          
+          console.log(`📊 Post ${post.id}: likes na tabela=${actualLikesCount}, likes no post=${post.likes_count}`);
+          
           return {
             ...post,
             profiles: profile ? {
@@ -103,7 +108,7 @@ const SimpleAudioFeed = () => {
               avatar_url: profile.avatar_url
             } : null,
             likes: postLikes,
-            likes_count: postLikes.length,
+            likes_count: actualLikesCount, // Usar o count real dos likes
             reposts: postReposts,
             reposts_count: postReposts.length
           };

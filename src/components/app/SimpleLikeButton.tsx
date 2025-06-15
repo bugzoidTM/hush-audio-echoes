@@ -5,6 +5,7 @@ import { Heart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface SimpleLikeButtonProps {
   postId: string;
@@ -15,21 +16,39 @@ interface SimpleLikeButtonProps {
 const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeButtonProps) => {
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(initialLikesCount || 0);
+  const [isLoading, setIsLoading] = useState(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (user && userLikes) {
-      setIsLiked(userLikes.some(like => like.user_id === user.id));
+      const userHasLiked = userLikes.some(like => like.user_id === user.id);
+      setIsLiked(userHasLiked);
+      console.log(`💖 Post ${postId}: User ${user.id} liked? ${userHasLiked}`);
     }
-  }, [user, userLikes]);
+  }, [user, userLikes, postId]);
+
+  useEffect(() => {
+    setLikesCount(initialLikesCount || 0);
+    console.log(`📊 Post ${postId}: Atualizando likesCount para ${initialLikesCount}`);
+  }, [initialLikesCount, postId]);
 
   const toggleLike = async () => {
-    if (!user) return;
+    if (!user || isLoading) return;
+
+    setIsLoading(true);
+    const previousIsLiked = isLiked;
+    const previousLikesCount = likesCount;
 
     try {
       if (isLiked) {
+        // Optimistic update
+        setIsLiked(false);
+        setLikesCount(prev => Math.max(0, prev - 1));
+
+        console.log(`👎 Removendo like do post ${postId}`);
         const { error } = await supabase
           .from('likes')
           .delete()
@@ -37,10 +56,12 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
           .eq('user_id', user.id);
 
         if (error) throw error;
-        
-        setIsLiked(false);
-        setLikesCount(prev => Math.max(0, prev - 1));
       } else {
+        // Optimistic update
+        setIsLiked(true);
+        setLikesCount(prev => prev + 1);
+
+        console.log(`👍 Adicionando like ao post ${postId}`);
         const { error } = await supabase
           .from('likes')
           .insert({
@@ -49,17 +70,27 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
           });
 
         if (error) throw error;
-        
-        setIsLiked(true);
-        setLikesCount(prev => prev + 1);
       }
+
+      // Aguardar um pouco antes de invalidar para garantir que a operação foi processada
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['audio-posts'] });
+      }, 100);
+
     } catch (error) {
-      console.error('Erro ao curtir:', error);
+      console.error('❌ Erro ao curtir post:', error);
+      
+      // Rollback on error
+      setIsLiked(previousIsLiked);
+      setLikesCount(previousLikesCount);
+      
       toast({
         title: "Erro",
         description: "Não foi possível curtir o áudio",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -69,9 +100,10 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
       variant="ghost"
       size="sm"
       className="p-0 h-auto"
+      disabled={isLoading}
     >
       <Heart 
-        className={`w-5 h-5 mr-1 ${isLiked ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} 
+        className={`w-5 h-5 mr-1 ${isLiked ? 'fill-red-500 text-red-500' : 'text-muted-foreground'} ${isLoading ? 'opacity-50' : ''}`} 
       />
       <span className="text-sm">{likesCount}</span>
     </Button>

@@ -510,6 +510,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_expired_posts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       expire_old_posts: {
         Args: Record<PropertyKey, never>
         Returns: undefined

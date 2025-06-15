@@ -1,5 +1,4 @@
 
-import React from "react";
 import { Heart, Clock, Users, Mic } from "lucide-react";
 
 const BenefitsSection = () => {

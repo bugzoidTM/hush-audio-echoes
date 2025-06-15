@@ -1,6 +1,4 @@
 
-import React from "react";
-
 const LandingFooter = () => {
   return (
     <footer className="bg-background border-t py-8" role="contentinfo">

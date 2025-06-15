@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import LandingHeader from "@/components/landing/LandingHeader";
@@ -16,7 +16,7 @@ const Index = () => {
 
   useEffect(() => {
     if (!loading && user) {
-      navigate('/shhhh');
+      navigate('/app');
     }
   }, [user, loading, navigate]);
 

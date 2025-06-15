@@ -1,17 +1,15 @@
-
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { User, LogOut, Plus, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import EnhancedRecordModal from './EnhancedRecordModal';
 
 const UpdatedAppHeader = () => {
   const { user, signOut } = useAuth();
   const [showRecordModal, setShowRecordModal] = useState(false);
-  const navigate = useNavigate();
 
   // Verificar se o usuário é admin/moderador
   const { data: userRole } = useQuery({
@@ -32,11 +30,6 @@ const UpdatedAppHeader = () => {
   });
 
   const isAdminOrModerator = userRole?.role === 'admin' || userRole?.role === 'moderator';
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/auth');
-  };
 
   return (
     <>
@@ -71,7 +64,7 @@ const UpdatedAppHeader = () => {
             </div>
             
             <Button
-              onClick={handleSignOut}
+              onClick={signOut}
               variant="outline"
               size="sm"
             >

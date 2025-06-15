@@ -1,8 +1,7 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -15,9 +14,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Simple cleanup function without security logging
+// Função para limpar estado de autenticação
 const cleanupAuthState = () => {
-  console.log('🔒 Cleaning up authentication state');
   Object.keys(localStorage).forEach((key) => {
     if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
       localStorage.removeItem(key);
@@ -38,10 +36,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    // Simple auth state change listener
+    // Configurar listener de mudanças de estado primeiro
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔐 Auth event:', event, session?.user?.email);
+        console.log('Auth event:', event, session?.user?.email);
         
         if (!mounted) return;
 
@@ -56,12 +54,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
-    // Get initial session
+    // Verificar sessão existente
     const getInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
-          console.error('❌ Erro ao obter sessão:', error);
+          console.error('Erro ao obter sessão:', error);
           cleanupAuthState();
         }
         
@@ -71,7 +69,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setLoading(false);
         }
       } catch (error) {
-        console.error('💥 Erro na inicialização da auth:', error);
+        console.error('Erro na inicialização da auth:', error);
         if (mounted) {
           setLoading(false);
         }
@@ -88,7 +86,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('🔐 Attempting sign in for:', email);
+      // Limpar estado antes de fazer login
       cleanupAuthState();
       
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -96,8 +94,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         password,
       });
 
-      if (error) {
-        throw error;
+      if (error) throw error;
+
+      // Forçar atualização da página após login bem-sucedido
+      if (data.user) {
+        setTimeout(() => {
+          window.location.href = '/shhhh';
+        }, 100);
       }
 
       return { error: null };
@@ -131,11 +134,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
-      console.log('🔐 Signing out user');
       cleanupAuthState();
       await supabase.auth.signOut({ scope: 'global' });
+      window.location.href = '/'; // Corrigido: vai direto para a página inicial
     } catch (error) {
-      console.error('❌ Erro no logout:', error);
+      console.error('Erro no logout:', error);
+      window.location.href = '/'; // Mesmo em caso de erro, vai para a página inicial
     }
   };
 

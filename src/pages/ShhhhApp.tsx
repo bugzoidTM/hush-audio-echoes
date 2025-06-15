@@ -8,6 +8,7 @@ import SearchSection from '@/components/app/SearchSection';
 import ExploreSection from '@/components/app/ExploreSection';
 import NotificationsSection from '@/components/app/NotificationsSection';
 import ProfileSection from '@/components/app/ProfileSection';
+import { Toaster } from '@/components/ui/toaster';
 
 const ShhhhApp = () => {
   const { user, loading } = useAuth();
@@ -51,9 +52,12 @@ const ShhhhApp = () => {
   };
 
   return (
-    <ShhhhLayout onSectionChange={setActiveSection}>
-      {renderContent()}
-    </ShhhhLayout>
+    <>
+      <ShhhhLayout onSectionChange={setActiveSection}>
+        {renderContent()}
+      </ShhhhLayout>
+      <Toaster />
+    </>
   );
 };
 

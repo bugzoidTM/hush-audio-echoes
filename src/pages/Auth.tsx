@@ -1,18 +1,17 @@
-
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useSimpleToast } from '@/hooks/useSimpleToast';
+import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
-  const { toast } = useSimpleToast();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
@@ -44,7 +43,7 @@ const Auth = () => {
         title: "Login realizado com sucesso!",
         description: "Redirecionando...",
       });
-      navigate('/shhhh');
+      // O redirecionamento é feito automaticamente no signIn
     }
   };
 

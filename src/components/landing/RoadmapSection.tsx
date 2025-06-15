@@ -1,5 +1,4 @@
 
-import React from "react";
 import { Check, Star, Clock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -122,6 +121,19 @@ const RoadmapSection = () => {
             </ul>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Call to Action */}
+      <div className="text-center mt-12">
+        <p className="text-gray-600 mb-4">
+          Quer influenciar o desenvolvimento do Shhhh?
+        </p>
+        <a 
+          href="#" 
+          className="text-primary hover:text-primary/80 font-medium underline"
+        >
+          Envie suas sugestões e feedback
+        </a>
       </div>
     </section>
   );

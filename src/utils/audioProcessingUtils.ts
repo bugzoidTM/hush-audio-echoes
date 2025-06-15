@@ -3,11 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { applyVoiceFilter } from './voiceFilters';
 
 export const processAndApplyVoiceFilter = async (blob: Blob, filter: string): Promise<Blob> => {
-  console.log('🎛️ [audioProcessingUtils] Processando áudio com filtro:', filter);
+  console.log('🎛️ [audioProcessingUtils] === INICIANDO PROCESSAMENTO DE FILTRO ===');
+  console.log('🎛️ [audioProcessingUtils] Filtro recebido:', filter);
+  console.log('🎛️ [audioProcessingUtils] Tamanho do blob original:', blob.size, 'bytes');
   
   try {
     const filteredBlob = await applyVoiceFilter(blob, filter as any);
-    console.log('✅ [audioProcessingUtils] Filtro aplicado - tamanho final:', filteredBlob.size, 'bytes');
+    console.log('✅ [audioProcessingUtils] Filtro aplicado com sucesso');
+    console.log('✅ [audioProcessingUtils] Filtro usado:', filter);
+    console.log('✅ [audioProcessingUtils] Tamanho final:', filteredBlob.size, 'bytes');
     return filteredBlob;
   } catch (error) {
     console.error('❌ [audioProcessingUtils] Erro ao aplicar filtro:', error);

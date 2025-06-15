@@ -57,7 +57,7 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
     setIsUploading(true);
 
     try {
-      console.log('📤 [RecordAudioModal] Iniciando upload do áudio filtrado...');
+      console.log('📤 [RecordAudioModal] Iniciando upload do áudio filtrado com filtro:', selectedFilter);
       
       // Upload audio file (já com filtro aplicado)
       const fileName = `${user.id}/${Date.now()}.wav`;

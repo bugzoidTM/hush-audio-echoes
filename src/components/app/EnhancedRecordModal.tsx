@@ -10,6 +10,7 @@ import RecordingInterface from './RecordingInterface';
 import AudioPostForm from './AudioPostForm';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { processAndApplyVoiceFilter, transcribeAudio, uploadAudioFile } from '@/utils/audioProcessingUtils';
+import { VoiceFilter } from '@/utils/voiceFilters';
 
 interface EnhancedRecordModalProps {
   open: boolean;
@@ -25,7 +26,7 @@ const EnhancedRecordModal = ({ open, onClose }: EnhancedRecordModalProps) => {
   const [description, setDescription] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState('normal');
+  const [selectedFilter, setSelectedFilter] = useState<VoiceFilter>('normal');
   const [enableTranscription, setEnableTranscription] = useState(true);
 
   const {
@@ -37,6 +38,11 @@ const EnhancedRecordModal = ({ open, onClose }: EnhancedRecordModalProps) => {
     stopRecording,
     resetRecording
   } = useAudioRecorder();
+
+  const handleFilterChange = (filterId: string) => {
+    console.log('🎛️ [EnhancedRecordModal] Mudando filtro para:', filterId);
+    setSelectedFilter(filterId as VoiceFilter);
+  };
 
   const handleSubmit = async () => {
     if (!recordedBlob || !user) return;
@@ -131,7 +137,7 @@ const EnhancedRecordModal = ({ open, onClose }: EnhancedRecordModalProps) => {
           {!isRecording && (
             <VoiceFilters 
               selectedFilter={selectedFilter} 
-              onFilterChange={setSelectedFilter} 
+              onFilterChange={handleFilterChange} 
             />
           )}
 

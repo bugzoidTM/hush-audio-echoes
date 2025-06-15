@@ -60,6 +60,7 @@ const ShhhhAudioPost = ({ post, onPostDeleted }: ShhhhAudioPostProps) => {
           });
       }
     } catch (error) {
+      console.error('❌ [ShhhhAudioPost] Erro ao processar like:', error);
       toast({
         title: "Erro",
         description: "Não foi possível processar a ação",
@@ -69,16 +70,29 @@ const ShhhhAudioPost = ({ post, onPostDeleted }: ShhhhAudioPostProps) => {
   };
 
   const handleDelete = async () => {
-    if (!user || user.id !== post.user_id) return;
+    if (!user || user.id !== post.user_id) {
+      console.error('❌ [ShhhhAudioPost] Usuário não autorizado para deletar o post');
+      return;
+    }
+
+    console.log('🗑️ [ShhhhAudioPost] Tentando deletar post:', { 
+      postId: post.id, 
+      userId: user.id, 
+      postUserId: post.user_id 
+    });
 
     try {
       const { error } = await supabase
         .from('audio_posts')
         .update({ status: 'deleted' })
-        .eq('id', post.id)
-        .eq('user_id', user.id);
+        .eq('id', post.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [ShhhhAudioPost] Erro ao deletar post:', error);
+        throw error;
+      }
+
+      console.log('✅ [ShhhhAudioPost] Post deletado com sucesso');
 
       toast({
         title: "Post excluído",
@@ -90,6 +104,7 @@ const ShhhhAudioPost = ({ post, onPostDeleted }: ShhhhAudioPostProps) => {
         onPostDeleted();
       }
     } catch (error) {
+      console.error('❌ [ShhhhAudioPost] Erro completo:', error);
       toast({
         title: "Erro",
         description: "Não foi possível excluir o post",

@@ -22,7 +22,7 @@ const HashtagPage = () => {
         .from('audio_posts')
         .select(`
           *,
-          profiles:user_id (
+          profiles!audio_posts_user_id_fkey (
             username,
             display_name,
             avatar_url
@@ -40,11 +40,11 @@ const HashtagPage = () => {
       // Mapear os dados para o formato esperado
       return data?.map(post => ({
         ...post,
-        profiles: Array.isArray(post.profiles) ? null : {
-          username: post.profiles?.username || null,
-          display_name: post.profiles?.display_name || null,
-          avatar_url: post.profiles?.avatar_url || null
-        }
+        profiles: post.profiles ? {
+          username: post.profiles.username || null,
+          display_name: post.profiles.display_name || null,
+          avatar_url: post.profiles.avatar_url || null
+        } : null
       })) || [];
     },
     enabled: !!hashtag,

@@ -51,7 +51,7 @@ const Index = () => {
             <span className="text-primary"> sem pressa</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-            Publique áudios efêmeros que desaparecem em 24 horas. 
+            Publique áudios temporários que desaparecem em 24 horas. 
             Sua voz, suas ideias, no momento certo.
           </p>
           <Button 
@@ -91,7 +91,7 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Seus áudios são efêmeros - desaparecem automaticamente 
+                Seus áudios são temporários - desaparecem automaticamente 
                 em 24 horas, mantendo tudo fresco e atual.
               </CardDescription>
             </CardContent>

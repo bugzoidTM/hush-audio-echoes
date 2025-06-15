@@ -72,7 +72,7 @@ const UpdatedAudioFeed = () => {
               <Mic className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-2">Nenhum áudio ainda</h3>
               <p className="text-muted-foreground">
-                Seja o primeiro a compartilhar um áudio efêmero!
+                Seja o primeiro a compartilhar um áudio temporário!
               </p>
             </CardContent>
           </Card>

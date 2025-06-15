@@ -24,7 +24,6 @@ const EnhancedRecordModal = ({ open, onClose }: EnhancedRecordModalProps) => {
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [isAnonymous, setIsAnonymous] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<VoiceFilter>('normal');
   const [enableTranscription, setEnableTranscription] = useState(true);
@@ -73,7 +72,7 @@ const EnhancedRecordModal = ({ open, onClose }: EnhancedRecordModalProps) => {
           audio_url: publicUrl,
           duration: duration,
           transcription: transcription,
-          is_anonymous: isAnonymous,
+          is_anonymous: false,
           voice_filter: selectedFilter,
         });
 
@@ -105,7 +104,6 @@ const EnhancedRecordModal = ({ open, onClose }: EnhancedRecordModalProps) => {
   const handleReset = () => {
     setTitle('');
     setDescription('');
-    setIsAnonymous(false);
     setEnableTranscription(true);
     setSelectedFilter('normal');
     resetRecording();
@@ -150,12 +148,10 @@ const EnhancedRecordModal = ({ open, onClose }: EnhancedRecordModalProps) => {
               <AudioPostForm
                 title={title}
                 description={description}
-                isAnonymous={isAnonymous}
                 enableTranscription={enableTranscription}
                 isUploading={isUploading}
                 onTitleChange={setTitle}
                 onDescriptionChange={setDescription}
-                onAnonymousChange={setIsAnonymous}
                 onTranscriptionChange={setEnableTranscription}
                 onSubmit={handleSubmit}
                 onCancel={onClose}

@@ -7,12 +7,10 @@ import { Button } from '@/components/ui/button';
 interface AudioPostFormProps {
   title: string;
   description: string;
-  isAnonymous: boolean;
   enableTranscription: boolean;
   isUploading: boolean;
   onTitleChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
-  onAnonymousChange: (value: boolean) => void;
   onTranscriptionChange: (value: boolean) => void;
   onSubmit: () => void;
   onCancel: () => void;
@@ -21,12 +19,10 @@ interface AudioPostFormProps {
 const AudioPostForm = ({
   title,
   description,
-  isAnonymous,
   enableTranscription,
   isUploading,
   onTitleChange,
   onDescriptionChange,
-  onAnonymousChange,
   onTranscriptionChange,
   onSubmit,
   onCancel
@@ -52,22 +48,12 @@ const AudioPostForm = ({
         />
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center space-x-2">
-          <Switch
-            checked={isAnonymous}
-            onCheckedChange={onAnonymousChange}
-          />
-          <label className="text-sm font-medium">Publicar anonimamente</label>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Switch
-            checked={enableTranscription}
-            onCheckedChange={onTranscriptionChange}
-          />
-          <label className="text-sm font-medium">Gerar transcrição automática</label>
-        </div>
+      <div className="flex items-center space-x-2">
+        <Switch
+          checked={enableTranscription}
+          onCheckedChange={onTranscriptionChange}
+        />
+        <label className="text-sm font-medium">Gerar transcrição automática</label>
       </div>
 
       <div className="flex space-x-2">

@@ -25,7 +25,7 @@ const Stats = () => {
       icon: Clock,
       value: "24h",
       label: "Tempo de Vida",
-      description: "Efemeridade que liberta"
+      description: "Temporariedade que liberta"
     }
   ];
 

@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,7 +26,6 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [isAnonymous, setIsAnonymous] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<VoiceFilter>('normal');
 
@@ -83,7 +81,7 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
           description: description || null,
           audio_url: publicUrl,
           duration: duration,
-          is_anonymous: isAnonymous,
+          is_anonymous: false,
           voice_filter: selectedFilter,
         });
 
@@ -115,7 +113,6 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
   const handleReset = () => {
     setTitle('');
     setDescription('');
-    setIsAnonymous(false);
     setSelectedFilter('normal');
     cleanup();
   };
@@ -178,14 +175,6 @@ const RecordAudioModal = ({ open, onClose }: RecordAudioModalProps) => {
                   placeholder="Conte mais sobre seu áudio..."
                   rows={3}
                 />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={isAnonymous}
-                  onCheckedChange={setIsAnonymous}
-                />
-                <label className="text-sm font-medium">Publicar anonimamente</label>
               </div>
 
               <div className="text-sm text-muted-foreground">

@@ -117,10 +117,7 @@ const UserProfile = () => {
               </h2>
               
               {!isOwnProfile && user && (
-                <FollowButton
-                  userId={profile.id}
-                  username={profile.username}
-                />
+                <FollowButton userId={profile.id} />
               )}
             </div>
             

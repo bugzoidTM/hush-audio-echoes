@@ -61,11 +61,11 @@ const ProfileSection = () => {
             <p className="text-sm text-muted-foreground">áudios</p>
           </div>
           <div>
-            <p className="font-semibold">0</p>
+            <p className="font-semibold">{userProfile?.followers_count || 0}</p>
             <p className="text-sm text-muted-foreground">seguidores</p>
           </div>
           <div>
-            <p className="font-semibold">0</p>
+            <p className="font-semibold">{userProfile?.following_count || 0}</p>
             <p className="text-sm text-muted-foreground">seguindo</p>
           </div>
         </div>

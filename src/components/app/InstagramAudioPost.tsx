@@ -138,7 +138,8 @@ const InstagramAudioPost = ({ post }: InstagramAudioPostProps) => {
           <SimplePostHeader 
             username={post.profiles?.username} 
             avatarUrl={post.profiles?.avatar_url} 
-            createdAt={post.created_at} 
+            createdAt={post.created_at}
+            userId={post.user_id}
           />
         </CardHeader>
 

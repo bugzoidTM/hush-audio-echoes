@@ -237,6 +237,27 @@ export type Database = {
         }
         Relationships: []
       }
+      followers: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       group_members: {
         Row: {
           group_id: string
@@ -359,6 +380,8 @@ export type Database = {
           bio: string | null
           created_at: string
           display_name: string | null
+          followers_count: number
+          following_count: number
           id: string
           updated_at: string
           username: string | null
@@ -368,6 +391,8 @@ export type Database = {
           bio?: string | null
           created_at?: string
           display_name?: string | null
+          followers_count?: number
+          following_count?: number
           id: string
           updated_at?: string
           username?: string | null
@@ -377,6 +402,8 @@ export type Database = {
           bio?: string | null
           created_at?: string
           display_name?: string | null
+          followers_count?: number
+          following_count?: number
           id?: string
           updated_at?: string
           username?: string | null

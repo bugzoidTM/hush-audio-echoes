@@ -1,3 +1,4 @@
+
 import { ReactNode, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import UserSuggestions from './UserSuggestions';
 import RecordAudioModal from './RecordAudioModal';
+import FollowersStories from './FollowersStories';
 
 interface InstagramLayoutProps {
   children: ReactNode;
@@ -55,7 +57,7 @@ const InstagramLayout = ({ children, onSectionChange }: InstagramLayoutProps) =>
       {/* Sidebar Esquerda */}
       <div className="w-64 border-r border-border fixed left-0 top-0 h-full bg-background z-10">
         <div className="p-6">
-          {/* Logo (nova logo do usuário) */}
+          {/* Logo */}
           <div className="mb-8 flex items-center justify-center">
             <img 
               src="/lovable-uploads/205b5735-3f33-453a-a025-eaffc0a2fba6.png" 
@@ -64,6 +66,7 @@ const InstagramLayout = ({ children, onSectionChange }: InstagramLayoutProps) =>
               data-testid="app-logo"
             />
           </div>
+          
           {/* Menu de Navegação */}
           <nav className="space-y-4">
             <Button 
@@ -151,6 +154,8 @@ const InstagramLayout = ({ children, onSectionChange }: InstagramLayoutProps) =>
         <div className="max-w-6xl mx-auto flex">
           {/* Feed Central */}
           <div className="flex-1 max-w-xl mx-auto">
+            {/* Stories dos usuários seguidos no topo */}
+            <FollowersStories />
             {children}
           </div>
 

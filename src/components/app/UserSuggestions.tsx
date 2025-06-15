@@ -3,12 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import UserProfileLink from './UserProfileLink';
+import FollowButton from './FollowButton';
 
 const UserSuggestions = () => {
   const { user } = useAuth();
-  const [followingUsers, setFollowingUsers] = useState<string[]>([]);
 
   const { data: suggestedUsers, isLoading } = useQuery({
     queryKey: ['suggested-users'],
@@ -16,12 +16,26 @@ const UserSuggestions = () => {
       console.log('🔍 [UserSuggestions] Buscando usuários sugeridos...');
       
       try {
-        // Buscar todos os profiles exceto o usuário atual
-        const { data: profiles, error: profilesError } = await supabase
+        // Buscar todos os profiles exceto o usuário atual e os que já segue
+        let profilesQuery = supabase
           .from('profiles')
-          .select('id, username, display_name, avatar_url')
-          .neq('id', user?.id)
-          .limit(10);
+          .select('id, username, display_name, avatar_url, followers_count')
+          .neq('id', user?.id);
+
+        // Se o usuário está logado, excluir os que já segue
+        if (user) {
+          const { data: following } = await supabase
+            .from('followers')
+            .select('following_id')
+            .eq('follower_id', user.id);
+
+          const followingIds = following?.map(f => f.following_id) || [];
+          if (followingIds.length > 0) {
+            profilesQuery = profilesQuery.not('id', 'in', `(${followingIds.join(',')})`);
+          }
+        }
+
+        const { data: profiles, error: profilesError } = await profilesQuery.limit(5);
 
         if (profilesError) {
           console.error('❌ [UserSuggestions] Erro ao buscar profiles:', profilesError);
@@ -44,7 +58,6 @@ const UserSuggestions = () => {
 
         if (postsError) {
           console.error('❌ [UserSuggestions] Erro ao buscar posts:', postsError);
-          // Continue mesmo se não conseguir buscar posts
         }
 
         console.log('📊 [UserSuggestions] Posts encontrados:', posts?.length || 0);
@@ -58,10 +71,9 @@ const UserSuggestions = () => {
           };
         });
 
-        // Ordenar por número de posts (mais ativo primeiro)
+        // Ordenar por número de seguidores primeiro, depois por posts
         const sortedUsers = usersWithPostCount
-          .sort((a, b) => b.postsCount - a.postsCount)
-          .slice(0, 5); // Limitar a 5 sugestões
+          .sort((a, b) => (b.followers_count || 0) - (a.followers_count || 0) || b.postsCount - a.postsCount);
 
         console.log('✅ [UserSuggestions] Usuários finais:', sortedUsers.length);
         return sortedUsers;
@@ -73,14 +85,6 @@ const UserSuggestions = () => {
     },
     enabled: !!user,
   });
-
-  const handleFollow = async (userId: string) => {
-    // Simular seguir usuário
-    setFollowingUsers(prev => [...prev, userId]);
-    
-    // Aqui você poderia implementar a lógica real de seguir
-    // Por exemplo, inserir na tabela de seguidores
-  };
 
   if (isLoading) {
     return (
@@ -127,23 +131,19 @@ const UserSuggestions = () => {
             </Avatar>
             
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
+              <UserProfileLink 
+                userId={profile.id} 
+                username={profile.username}
+                className="text-sm font-medium truncate block"
+              >
                 {profile.display_name || profile.username || 'Usuário'}
-              </p>
+              </UserProfileLink>
               <p className="text-xs text-muted-foreground">
-                {profile.postsCount} {profile.postsCount === 1 ? 'áudio' : 'áudios'}
+                {profile.followers_count || 0} {(profile.followers_count || 0) === 1 ? 'seguidor' : 'seguidores'} • {profile.postsCount} {profile.postsCount === 1 ? 'áudio' : 'áudios'}
               </p>
             </div>
             
-            <Button
-              size="sm"
-              variant={followingUsers.includes(profile.id) ? "outline" : "default"}
-              className="text-xs px-3"
-              onClick={() => handleFollow(profile.id)}
-              disabled={followingUsers.includes(profile.id)}
-            >
-              {followingUsers.includes(profile.id) ? 'Seguindo' : 'Seguir'}
-            </Button>
+            <FollowButton userId={profile.id} />
           </div>
         ))}
       </div>

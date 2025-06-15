@@ -70,7 +70,7 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
         if (error) throw error;
       }
 
-      // Removido a invalidação das queries para evitar conflito com updates otimistas
+      console.log(`✅ Like processado com sucesso para post ${postId}. Novo estado: liked=${!previousIsLiked}, count=${likesCount}`);
 
     } catch (error) {
       console.error('❌ Erro ao curtir post:', error);

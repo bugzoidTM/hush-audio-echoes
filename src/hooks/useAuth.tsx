@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -135,10 +136,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       cleanupAuthState();
       await supabase.auth.signOut({ scope: 'global' });
-      window.location.href = '/';
+      window.location.href = '/'; // Corrigido: vai direto para a página inicial
     } catch (error) {
       console.error('Erro no logout:', error);
-      window.location.href = '/';
+      window.location.href = '/'; // Mesmo em caso de erro, vai para a página inicial
     }
   };
 

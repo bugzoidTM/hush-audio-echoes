@@ -1,12 +1,13 @@
 
 import React from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/useAuth";
+import { SimpleToastProvider } from "@/hooks/useSimpleToast";
+import SimpleToaster from "@/components/ui/simple-toaster";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import HashtagPage from "./pages/HashtagPage";
@@ -20,29 +21,32 @@ import Admin from "./pages/Admin";
 const queryClient = new QueryClient();
 
 const AppRouter = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <TooltipProvider>
-        <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/shhhh" element={<ShhhhApp />} />
-              <Route path="/simple" element={<SimpleApp />} />
-              <Route path="/updated" element={<UpdatedApp />} />
-              <Route path="/user/:userId" element={<UserProfile />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/hashtag/:hashtag" element={<HashtagPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </AuthProvider>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <TooltipProvider>
+          <SimpleToastProvider>
+            <AuthProvider>
+              <SimpleToaster />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/shhhh" element={<ShhhhApp />} />
+                  <Route path="/simple" element={<SimpleApp />} />
+                  <Route path="/updated" element={<UpdatedApp />} />
+                  <Route path="/user/:userId" element={<UserProfile />} />
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/hashtag/:hashtag" element={<HashtagPage />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </AuthProvider>
+          </SimpleToastProvider>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default AppRouter;

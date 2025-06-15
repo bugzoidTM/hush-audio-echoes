@@ -16,47 +16,47 @@ interface SimpleLikeButtonProps {
 
 const SimpleLikeButton = ({ postId, initialLikesCount, userLikes, onLikeChange }: SimpleLikeButtonProps) => {
   const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(initialLikesCount || 0);
+  const [likesCount, setLikesCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Sync state with props when they change
+  // Sempre sincronizar com os dados mais recentes
   useEffect(() => {
-    console.log(`🔄 [SimpleLikeButton] Sincronizando estado para post ${postId}:`, {
+    console.log(`🔄 [SimpleLikeButton] Sincronizando dados para post ${postId}:`, {
       initialLikesCount,
-      userLikes: userLikes?.length || 0,
+      userLikesLength: userLikes?.length || 0,
       userId: user?.id
     });
 
+    // Usar contagem inicial como base
+    setLikesCount(initialLikesCount || 0);
+    
+    // Verificar se usuário curtiu
     if (user && userLikes) {
       const userHasLiked = userLikes.some(like => like.user_id === user.id);
       setIsLiked(userHasLiked);
+      console.log(`👤 [SimpleLikeButton] Usuário ${userHasLiked ? 'curtiu' : 'não curtiu'} o post ${postId}`);
     } else {
       setIsLiked(false);
     }
-    
-    // Sempre usar a contagem inicial fornecida
-    setLikesCount(initialLikesCount || 0);
-  }, [user, userLikes, initialLikesCount, postId]);
+  }, [user?.id, userLikes, initialLikesCount, postId]);
 
   const toggleLike = async () => {
     if (!user || isLoading) {
-      console.log('❌ [SimpleLikeButton] Usuário não logado ou carregando');
+      console.log('❌ [SimpleLikeButton] Usuário não logado ou operação em andamento');
       return;
     }
 
     setIsLoading(true);
-    
-    // Backup do estado atual
     const previousIsLiked = isLiked;
     const previousCount = likesCount;
     
     try {
       if (isLiked) {
-        // Atualização otimista - remover like
+        // Remover like - atualização otimista
         console.log(`👎 [SimpleLikeButton] Removendo like do post ${postId}`);
         setIsLiked(false);
         setLikesCount(prev => Math.max(0, prev - 1));
@@ -69,13 +69,14 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes, onLikeChange }
 
         if (error) throw error;
 
-        // Notificar componente pai da mudança
+        // Notificar mudança para componente pai
+        const newCount = Math.max(0, previousCount - 1);
         if (onLikeChange) {
-          onLikeChange(false, Math.max(0, previousCount - 1));
+          onLikeChange(false, newCount);
         }
 
       } else {
-        // Atualização otimista - adicionar like
+        // Adicionar like - atualização otimista
         console.log(`👍 [SimpleLikeButton] Adicionando like ao post ${postId}`);
         setIsLiked(true);
         setLikesCount(prev => prev + 1);
@@ -89,16 +90,17 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes, onLikeChange }
 
         if (error) throw error;
 
-        // Notificar componente pai da mudança
+        // Notificar mudança para componente pai
+        const newCount = previousCount + 1;
         if (onLikeChange) {
-          onLikeChange(true, previousCount + 1);
+          onLikeChange(true, newCount);
         }
       }
 
       console.log(`✅ [SimpleLikeButton] Like processado com sucesso para post ${postId}`);
 
-      // Invalidar queries relacionadas após operação bem-sucedida
-      await queryClient.invalidateQueries({ 
+      // Invalidar cache para buscar dados atualizados
+      queryClient.invalidateQueries({ 
         queryKey: ['audio-posts'],
         exact: false 
       });
@@ -106,7 +108,7 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes, onLikeChange }
     } catch (error) {
       console.error('❌ [SimpleLikeButton] Erro ao processar like:', error);
       
-      // Rollback em caso de erro
+      // Reverter mudanças otimistas em caso de erro
       setIsLiked(previousIsLiked);
       setLikesCount(previousCount);
       
@@ -133,7 +135,9 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes, onLikeChange }
       disabled={isLoading}
     >
       <Heart 
-        className={`w-5 h-5 mr-1 ${isLiked ? 'fill-red-500 text-red-500' : 'text-muted-foreground'} ${isLoading ? 'opacity-50' : ''}`} 
+        className={`w-5 h-5 mr-1 ${
+          isLiked ? 'fill-red-500 text-red-500' : 'text-muted-foreground'
+        } ${isLoading ? 'opacity-50' : ''}`} 
       />
       <span className="text-sm">{likesCount}</span>
     </Button>

@@ -28,10 +28,10 @@ const SimpleAudioFeed = () => {
   const { data: audioPosts, isLoading, error, refetch } = useQuery({
     queryKey: ['audio-posts'],
     queryFn: async () => {
-      console.log('🎵 [SimpleAudioFeed] Iniciando busca por posts de áudio...');
+      console.log('🎵 [SimpleAudioFeed] Buscando posts de áudio...');
       
       try {
-        // Buscar posts básicos
+        // 1. Buscar posts básicos
         const { data: postsData, error: postsError } = await supabase
           .from('audio_posts')
           .select('*')
@@ -39,21 +39,19 @@ const SimpleAudioFeed = () => {
           .order('created_at', { ascending: false });
 
         if (postsError) {
-          console.error('❌ [SimpleAudioFeed] Erro ao buscar posts básicos:', postsError);
+          console.error('❌ [SimpleAudioFeed] Erro ao buscar posts:', postsError);
           throw postsError;
         }
-
-        console.log('📝 [SimpleAudioFeed] Posts básicos encontrados:', postsData?.length || 0);
 
         if (!postsData || postsData.length === 0) {
           console.log('📭 [SimpleAudioFeed] Nenhum post encontrado');
           return [];
         }
 
-        // Buscar profiles
-        const userIds = [...new Set(postsData.map(post => post.user_id))];
-        console.log('👥 [SimpleAudioFeed] Buscando profiles para usuários:', userIds);
+        console.log('📝 [SimpleAudioFeed] Posts encontrados:', postsData.length);
 
+        // 2. Buscar profiles dos usuários
+        const userIds = [...new Set(postsData.map(post => post.user_id))];
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
           .select('id, username, avatar_url')
@@ -63,9 +61,7 @@ const SimpleAudioFeed = () => {
           console.error('❌ [SimpleAudioFeed] Erro ao buscar profiles:', profilesError);
         }
 
-        console.log('👤 [SimpleAudioFeed] Profiles encontrados:', profilesData?.length || 0);
-
-        // Buscar likes para todos os posts de uma vez
+        // 3. Buscar todos os likes de uma vez
         const postIds = postsData.map(post => post.id);
         const { data: likesData, error: likesError } = await supabase
           .from('likes')
@@ -76,9 +72,7 @@ const SimpleAudioFeed = () => {
           console.error('❌ [SimpleAudioFeed] Erro ao buscar likes:', likesError);
         }
 
-        console.log('❤️ [SimpleAudioFeed] Likes encontrados:', likesData?.length || 0);
-
-        // Buscar reposts
+        // 4. Buscar reposts
         const { data: repostsData, error: repostsError } = await supabase
           .from('audio_reposts')
           .select('user_id, original_audio_id')
@@ -88,22 +82,19 @@ const SimpleAudioFeed = () => {
           console.error('❌ [SimpleAudioFeed] Erro ao buscar reposts:', repostsError);
         }
 
-        console.log('🔄 [SimpleAudioFeed] Reposts encontrados:', repostsData?.length || 0);
-
-        // Combinar os dados com contagem precisa de likes
-        const combinedData = postsData.map(post => {
+        // 5. Combinar todos os dados
+        const enrichedPosts = postsData.map(post => {
           const profile = profilesData?.find(p => p.id === post.user_id);
           const postLikes = likesData?.filter(like => like.audio_id === post.id) || [];
           const postReposts = repostsData?.filter(repost => repost.original_audio_id === post.id) || [];
           
-          // SEMPRE usar a contagem real de likes do banco de dados
+          // Usar contagem real dos likes, não a do cache
           const realLikesCount = postLikes.length;
           
-          console.log(`📊 [SimpleAudioFeed] Post ${post.id}:`, {
-            dbLikesCount: post.likes_count,
-            realLikesCount,
-            likesArray: postLikes.length,
-            finalCount: realLikesCount
+          console.log(`📊 [SimpleAudioFeed] Post ${post.id} - Likes: ${realLikesCount}`, {
+            dbCount: post.likes_count,
+            realCount: realLikesCount,
+            likesArray: postLikes.length
           });
           
           return {
@@ -113,25 +104,25 @@ const SimpleAudioFeed = () => {
               avatar_url: profile.avatar_url
             } : null,
             likes: postLikes,
-            likes_count: realLikesCount, // Sempre usar contagem real dos likes
+            likes_count: realLikesCount, // SEMPRE usar contagem real
             reposts: postReposts,
             reposts_count: postReposts.length
           };
         });
 
-        console.log('✅ [SimpleAudioFeed] Dados combinados finais:', combinedData.length, 'posts');
-        return combinedData as AudioPost[];
+        console.log('✅ [SimpleAudioFeed] Posts enriquecidos:', enrichedPosts.length);
+        return enrichedPosts as AudioPost[];
 
       } catch (error) {
-        console.error('💥 [SimpleAudioFeed] Erro geral na busca:', error);
+        console.error('💥 [SimpleAudioFeed] Erro geral:', error);
         throw error;
       }
     },
-    staleTime: 1000 * 30, // 30 segundos - reduzido para melhor sincronização
-    gcTime: 1000 * 60 * 5, // 5 minutos
+    staleTime: 1000 * 10, // 10 segundos - mais agressivo para atualizações
+    gcTime: 1000 * 60 * 2, // 2 minutos - cache menor
     refetchOnMount: true,
-    refetchOnWindowFocus: false,
-    refetchInterval: false, // Não usar polling automático
+    refetchOnWindowFocus: true, // Reativar para garantir dados frescos
+    refetchInterval: false,
   });
 
   if (isLoading) {

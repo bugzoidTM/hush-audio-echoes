@@ -2,7 +2,7 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MessageCircle, Repeat } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -42,29 +42,40 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Estado local para controlar contadores que podem mudar
-  const [localLikesCount, setLocalLikesCount] = useState(post.likes_count || 0);
-  const [isReposted, setIsReposted] = useState(post.reposts?.some(repost => repost.user_id === user?.id) || false);
-  const [repostsCount, setRepostsCount] = useState(post.reposts_count || 0);
-  const [showReplyModal, setShowReplyModal] = useState(false);
+  // Estado local sincronizado com os dados do post
+  const [currentPost, setCurrentPost] = useState(post);
 
-  console.log(`📊 [SimpleAudioPost] Renderizando post ${post.id}:`, {
-    postLikesCount: post.likes_count,
-    localLikesCount,
-    likesArray: post.likes?.length || 0
-  });
+  // Atualizar estado local quando post muda
+  useEffect(() => {
+    console.log(`📊 [SimpleAudioPost] Atualizando post ${post.id}:`, {
+      likesCount: post.likes_count,
+      likesArray: post.likes?.length || 0
+    });
+    setCurrentPost(post);
+  }, [post]);
 
   const handleLikeChange = (liked: boolean, newCount: number) => {
-    console.log(`🔄 [SimpleAudioPost] Atualizando contagem local para post ${post.id}:`, {
+    console.log(`🔄 [SimpleAudioPost] Mudança de like para post ${post.id}:`, {
       liked,
       newCount,
-      previousCount: localLikesCount
+      previousCount: currentPost.likes_count
     });
-    setLocalLikesCount(newCount);
+    
+    // Atualizar estado local imediatamente
+    setCurrentPost(prev => ({
+      ...prev,
+      likes_count: newCount,
+      likes: liked 
+        ? [...(prev.likes || []), { user_id: user?.id || '' }]
+        : (prev.likes || []).filter(like => like.user_id !== user?.id)
+    }));
   };
 
   const handleRepost = async () => {
     if (!user) return;
+    
+    const isReposted = currentPost.reposts?.some(repost => repost.user_id === user.id) || false;
+    
     try {
       if (isReposted) {
         const { error } = await supabase
@@ -73,8 +84,13 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
           .eq('user_id', user.id)
           .eq('original_audio_id', post.id);
         if (error) throw error;
-        setIsReposted(false);
-        setRepostsCount(prev => prev - 1);
+        
+        setCurrentPost(prev => ({
+          ...prev,
+          reposts_count: Math.max(0, prev.reposts_count - 1),
+          reposts: (prev.reposts || []).filter(repost => repost.user_id !== user.id)
+        }));
+        
         toast({
           title: "Republicação removida",
           description: "Áudio removido do seu perfil"
@@ -87,13 +103,19 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
             original_audio_id: post.id
           });
         if (error) throw error;
-        setIsReposted(true);
-        setRepostsCount(prev => prev + 1);
+        
+        setCurrentPost(prev => ({
+          ...prev,
+          reposts_count: prev.reposts_count + 1,
+          reposts: [...(prev.reposts || []), { user_id: user.id }]
+        }));
+        
         toast({
           title: "Áudio republicado",
           description: "Áudio adicionado ao seu perfil"
         });
       }
+      
       queryClient.invalidateQueries({ queryKey: ['audio-posts'] });
     } catch (error: any) {
       toast({
@@ -104,37 +126,40 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
     }
   };
 
+  const [showReplyModal, setShowReplyModal] = useState(false);
+  const isReposted = currentPost.reposts?.some(repost => repost.user_id === user?.id) || false;
+
   return (
     <>
       <Card className="w-full">
         <CardHeader className="pb-3">
           <SimplePostHeader 
-            username={post.profiles?.username}
-            avatarUrl={post.profiles?.avatar_url}
-            createdAt={post.created_at}
+            username={currentPost.profiles?.username}
+            avatarUrl={currentPost.profiles?.avatar_url}
+            createdAt={currentPost.created_at}
           />
         </CardHeader>
 
         <CardContent className="pt-0">
           <div className="space-y-3">
             {/* Descrição */}
-            <SimplePostDescription description={post.description} />
+            <SimplePostDescription description={currentPost.description} />
 
             {/* Player de Áudio */}
             <SimpleAudioPlayer 
-              audioUrl={post.audio_url}
-              duration={post.duration}
-              voiceFilter={post.voice_filter}
-              expiresAt={post.expires_at}
+              audioUrl={currentPost.audio_url}
+              duration={currentPost.duration}
+              voiceFilter={currentPost.voice_filter}
+              expiresAt={currentPost.expires_at}
             />
 
             {/* Ações */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <SimpleLikeButton 
-                  postId={post.id}
-                  initialLikesCount={localLikesCount}
-                  userLikes={post.likes}
+                  postId={currentPost.id}
+                  initialLikesCount={currentPost.likes_count}
+                  userLikes={currentPost.likes}
                   onLikeChange={handleLikeChange}
                 />
 
@@ -145,7 +170,7 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
                   className="p-0 h-auto"
                 >
                   <MessageCircle className="w-5 h-5 mr-1 text-muted-foreground" />
-                  <span className="text-sm">{post.replies_count}</span>
+                  <span className="text-sm">{currentPost.replies_count}</span>
                 </Button>
 
                 <Button
@@ -155,7 +180,7 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
                   className={`p-0 h-auto ${isReposted ? 'text-green-500' : ''}`}
                 >
                   <Repeat className="w-5 h-5 mr-1" />
-                  <span className="text-sm">{repostsCount}</span>
+                  <span className="text-sm">{currentPost.reposts_count}</span>
                 </Button>
               </div>
             </div>
@@ -166,8 +191,8 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
       <ReplyModal
         open={showReplyModal}
         onClose={() => setShowReplyModal(false)}
-        parentPostId={post.id}
-        parentUsername={post.profiles?.username}
+        parentPostId={currentPost.id}
+        parentUsername={currentPost.profiles?.username}
       />
     </>
   );

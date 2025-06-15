@@ -29,6 +29,7 @@ const AppRouter = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/app" element={<ShhhhApp />} />
               <Route path="/simple" element={<SimpleApp />} />
               <Route path="/updated" element={<UpdatedApp />} />
               <Route path="/shhhh" element={<ShhhhApp />} />

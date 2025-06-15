@@ -14,10 +14,10 @@ const SimpleToaster: React.FC = () => {
         <div
           key={toast.id}
           className={`
-            min-w-80 rounded-md border p-4 shadow-lg
+            min-w-80 rounded-md border p-4 shadow-lg transition-all animate-in slide-in-from-top-2
             ${toast.variant === 'destructive' 
-              ? 'border-destructive bg-destructive text-destructive-foreground' 
-              : 'border bg-background text-foreground'
+              ? 'border-red-500 bg-red-50 text-red-900 dark:border-red-400 dark:bg-red-950 dark:text-red-100' 
+              : 'border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100'
             }
           `}
         >
@@ -32,7 +32,7 @@ const SimpleToaster: React.FC = () => {
             </div>
             <button
               onClick={() => dismiss(toast.id)}
-              className="ml-2 text-foreground/50 hover:text-foreground"
+              className="ml-2 opacity-50 hover:opacity-100 transition-opacity"
             >
               <X className="h-4 w-4" />
             </button>

@@ -3,13 +3,16 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, Share, MoreHorizontal, Play, Pause } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, Play, Pause, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import HashtagLink from './HashtagLink';
+import AudioCountdownTimer from './AudioCountdownTimer';
+import { getFilterDisplayName } from '@/utils/audioUtils';
 
 interface ShhhhAudioPostProps {
   post: {
@@ -20,6 +23,8 @@ interface ShhhhAudioPostProps {
     audio_url: string;
     duration: number;
     created_at: string;
+    expires_at: string;
+    voice_filter?: string;
     likes_count: number;
     replies_count: number;
     profiles: {
@@ -93,6 +98,20 @@ const ShhhhAudioPost = ({ post }: ShhhhAudioPostProps) => {
     }
   };
 
+  // Função para processar texto e tornar hashtags clicáveis
+  const processDescription = (text: string) => {
+    if (!text) return null;
+    
+    const parts = text.split(/(\#\w+)/g);
+    
+    return parts.map((part, index) => {
+      if (part.startsWith('#')) {
+        return <HashtagLink key={index} hashtag={part} />;
+      }
+      return part;
+    });
+  };
+
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardContent className="p-0">
@@ -134,45 +153,58 @@ const ShhhhAudioPost = ({ post }: ShhhhAudioPostProps) => {
             <h3 className="font-semibold text-sm mb-1">{post.title}</h3>
           )}
           {post.description && (
-            <p className="text-sm text-muted-foreground mb-3">{post.description}</p>
+            <div className="text-sm text-muted-foreground mb-3">
+              {processDescription(post.description)}
+            </div>
           )}
           
           {/* Player de Áudio */}
-          <div className="flex items-center space-x-3 bg-muted rounded-lg p-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-10 h-10 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={handlePlay}
-            >
-              {isPlaying ? (
-                <Pause className="w-5 h-5" />
-              ) : (
-                <Play className="w-5 h-5" />
-              )}
-            </Button>
-            
-            <div className="flex-1">
-              <div className="flex items-center space-x-2">
-                <div className="h-8 flex items-center space-x-1">
-                  {Array.from({ length: 20 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`w-1 bg-primary/40 rounded-full ${
-                        isPlaying ? 'animate-pulse' : ''
-                      }`}
-                      style={{
-                        height: `${Math.random() * 20 + 8}px`,
-                        animationDelay: `${i * 0.1}s`,
-                      }}
-                    />
-                  ))}
+          <div className="bg-muted rounded-lg p-3">
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-10 h-10 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={handlePlay}
+              >
+                {isPlaying ? (
+                  <Pause className="w-5 h-5" />
+                ) : (
+                  <Play className="w-5 h-5" />
+                )}
+              </Button>
+              
+              <div className="flex-1">
+                <div className="flex items-center space-x-2">
+                  <div className="h-8 flex items-center space-x-1">
+                    {Array.from({ length: 20 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={`w-1 bg-primary/40 rounded-full ${
+                          isPlaying ? 'animate-pulse' : ''
+                        }`}
+                        style={{
+                          height: `${Math.random() * 20 + 8}px`,
+                          animationDelay: `${i * 0.1}s`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-xs text-muted-foreground">
+                    {Math.floor(post.duration / 60)}:{(post.duration % 60).toString().padStart(2, '0')}
+                  </p>
+                  <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    <span>Filtro: {getFilterDisplayName(post.voice_filter)}</span>
+                  </div>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {Math.floor(post.duration / 60)}:{(post.duration % 60).toString().padStart(2, '0')}
-              </p>
             </div>
+            
+            {/* Contador regressivo */}
+            <AudioCountdownTimer expiresAt={post.expires_at} />
           </div>
         </div>
 

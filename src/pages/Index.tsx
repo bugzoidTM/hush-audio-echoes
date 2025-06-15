@@ -6,6 +6,7 @@ import LandingHeader from "@/components/landing/LandingHeader";
 import HeroSection from "@/components/landing/HeroSection";
 import FeaturesSection from "@/components/landing/FeaturesSection";
 import BenefitsSection from "@/components/landing/BenefitsSection";
+import RoadmapSection from "@/components/landing/RoadmapSection";
 import CTASection from "@/components/landing/CTASection";
 import LandingFooter from "@/components/landing/LandingFooter";
 
@@ -34,6 +35,7 @@ const Index = () => {
         <HeroSection />
         <FeaturesSection />
         <BenefitsSection />
+        <RoadmapSection />
         <CTASection />
       </main>
       <LandingFooter />

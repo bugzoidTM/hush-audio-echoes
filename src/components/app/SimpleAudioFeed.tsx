@@ -28,7 +28,7 @@ const SimpleAudioFeed = () => {
   const { data: audioPosts, isLoading, error, refetch } = useQuery({
     queryKey: ['audio-posts'],
     queryFn: async () => {
-      console.log('🎵 Iniciando busca por posts de áudio...');
+      console.log('🎵 [SimpleAudioFeed] Iniciando busca por posts de áudio...');
       
       try {
         // Buscar posts básicos
@@ -39,20 +39,20 @@ const SimpleAudioFeed = () => {
           .order('created_at', { ascending: false });
 
         if (postsError) {
-          console.error('❌ Erro ao buscar posts básicos:', postsError);
+          console.error('❌ [SimpleAudioFeed] Erro ao buscar posts básicos:', postsError);
           throw postsError;
         }
 
-        console.log('📝 Posts básicos encontrados:', postsData?.length || 0);
+        console.log('📝 [SimpleAudioFeed] Posts básicos encontrados:', postsData?.length || 0);
 
         if (!postsData || postsData.length === 0) {
-          console.log('📭 Nenhum post encontrado');
+          console.log('📭 [SimpleAudioFeed] Nenhum post encontrado');
           return [];
         }
 
         // Buscar profiles
         const userIds = [...new Set(postsData.map(post => post.user_id))];
-        console.log('👥 Buscando profiles para usuários:', userIds);
+        console.log('👥 [SimpleAudioFeed] Buscando profiles para usuários:', userIds);
 
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
@@ -60,10 +60,10 @@ const SimpleAudioFeed = () => {
           .in('id', userIds);
 
         if (profilesError) {
-          console.error('❌ Erro ao buscar profiles:', profilesError);
+          console.error('❌ [SimpleAudioFeed] Erro ao buscar profiles:', profilesError);
         }
 
-        console.log('👤 Profiles encontrados:', profilesData?.length || 0);
+        console.log('👤 [SimpleAudioFeed] Profiles encontrados:', profilesData?.length || 0);
 
         // Buscar likes para todos os posts de uma vez
         const postIds = postsData.map(post => post.id);
@@ -73,10 +73,10 @@ const SimpleAudioFeed = () => {
           .in('audio_id', postIds);
 
         if (likesError) {
-          console.error('❌ Erro ao buscar likes:', likesError);
+          console.error('❌ [SimpleAudioFeed] Erro ao buscar likes:', likesError);
         }
 
-        console.log('❤️ Likes encontrados:', likesData?.length || 0);
+        console.log('❤️ [SimpleAudioFeed] Likes encontrados:', likesData?.length || 0);
 
         // Buscar reposts
         const { data: repostsData, error: repostsError } = await supabase
@@ -85,10 +85,10 @@ const SimpleAudioFeed = () => {
           .in('original_audio_id', postIds);
 
         if (repostsError) {
-          console.error('❌ Erro ao buscar reposts:', repostsError);
+          console.error('❌ [SimpleAudioFeed] Erro ao buscar reposts:', repostsError);
         }
 
-        console.log('🔄 Reposts encontrados:', repostsData?.length || 0);
+        console.log('🔄 [SimpleAudioFeed] Reposts encontrados:', repostsData?.length || 0);
 
         // Combinar os dados com contagem precisa de likes
         const combinedData = postsData.map(post => {
@@ -96,10 +96,15 @@ const SimpleAudioFeed = () => {
           const postLikes = likesData?.filter(like => like.audio_id === post.id) || [];
           const postReposts = repostsData?.filter(repost => repost.original_audio_id === post.id) || [];
           
-          // Usar sempre a contagem real de likes da query
+          // SEMPRE usar a contagem real de likes do banco de dados
           const realLikesCount = postLikes.length;
           
-          console.log(`📊 Post ${post.id}: likes reais=${realLikesCount}`);
+          console.log(`📊 [SimpleAudioFeed] Post ${post.id}:`, {
+            dbLikesCount: post.likes_count,
+            realLikesCount,
+            likesArray: postLikes.length,
+            finalCount: realLikesCount
+          });
           
           return {
             ...post,
@@ -108,28 +113,29 @@ const SimpleAudioFeed = () => {
               avatar_url: profile.avatar_url
             } : null,
             likes: postLikes,
-            likes_count: realLikesCount, // Sempre usar contagem real
+            likes_count: realLikesCount, // Sempre usar contagem real dos likes
             reposts: postReposts,
             reposts_count: postReposts.length
           };
         });
 
-        console.log('✅ Dados combinados finais:', combinedData.length, 'posts');
+        console.log('✅ [SimpleAudioFeed] Dados combinados finais:', combinedData.length, 'posts');
         return combinedData as AudioPost[];
 
       } catch (error) {
-        console.error('💥 Erro geral na busca:', error);
+        console.error('💥 [SimpleAudioFeed] Erro geral na busca:', error);
         throw error;
       }
     },
-    staleTime: 1000 * 60 * 2, // 2 minutos - reduzido para maior sincronização
-    gcTime: 1000 * 60 * 10, // 10 minutos - reduzido
-    refetchOnMount: 'always',
+    staleTime: 1000 * 30, // 30 segundos - reduzido para melhor sincronização
+    gcTime: 1000 * 60 * 5, // 5 minutos
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
+    refetchInterval: false, // Não usar polling automático
   });
 
   if (isLoading) {
-    console.log('⏳ Carregando posts...');
+    console.log('⏳ [SimpleAudioFeed] Carregando posts...');
     return (
       <div className="space-y-4">
         {[...Array(3)].map((_, i) => (
@@ -144,7 +150,7 @@ const SimpleAudioFeed = () => {
   }
 
   if (error) {
-    console.error('❌ Erro no feed:', error);
+    console.error('❌ [SimpleAudioFeed] Erro no feed:', error);
     return (
       <Card>
         <CardContent className="p-6 text-center">
@@ -154,7 +160,7 @@ const SimpleAudioFeed = () => {
           </p>
           <button 
             onClick={() => {
-              console.log('🔄 Tentando recarregar...');
+              console.log('🔄 [SimpleAudioFeed] Tentando recarregar...');
               refetch();
             }}
             className="text-primary hover:underline"
@@ -167,7 +173,7 @@ const SimpleAudioFeed = () => {
   }
 
   if (!audioPosts || audioPosts.length === 0) {
-    console.log('📭 Nenhum post para exibir');
+    console.log('📭 [SimpleAudioFeed] Nenhum post para exibir');
     return (
       <Card>
         <CardContent className="p-8 text-center">
@@ -181,7 +187,7 @@ const SimpleAudioFeed = () => {
     );
   }
 
-  console.log('🎉 Exibindo', audioPosts.length, 'posts');
+  console.log('🎉 [SimpleAudioFeed] Exibindo', audioPosts.length, 'posts');
   return (
     <div className="space-y-6">
       {audioPosts?.map((post) => (

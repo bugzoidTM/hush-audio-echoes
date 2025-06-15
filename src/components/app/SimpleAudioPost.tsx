@@ -42,9 +42,26 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Estado local para controlar contadores que podem mudar
+  const [localLikesCount, setLocalLikesCount] = useState(post.likes_count || 0);
   const [isReposted, setIsReposted] = useState(post.reposts?.some(repost => repost.user_id === user?.id) || false);
   const [repostsCount, setRepostsCount] = useState(post.reposts_count || 0);
   const [showReplyModal, setShowReplyModal] = useState(false);
+
+  console.log(`📊 [SimpleAudioPost] Renderizando post ${post.id}:`, {
+    postLikesCount: post.likes_count,
+    localLikesCount,
+    likesArray: post.likes?.length || 0
+  });
+
+  const handleLikeChange = (liked: boolean, newCount: number) => {
+    console.log(`🔄 [SimpleAudioPost] Atualizando contagem local para post ${post.id}:`, {
+      liked,
+      newCount,
+      previousCount: localLikesCount
+    });
+    setLocalLikesCount(newCount);
+  };
 
   const handleRepost = async () => {
     if (!user) return;
@@ -116,8 +133,9 @@ const SimpleAudioPost = ({ post }: SimpleAudioPostProps) => {
               <div className="flex items-center space-x-4">
                 <SimpleLikeButton 
                   postId={post.id}
-                  initialLikesCount={post.likes_count}
+                  initialLikesCount={localLikesCount}
                   userLikes={post.likes}
+                  onLikeChange={handleLikeChange}
                 />
 
                 <Button

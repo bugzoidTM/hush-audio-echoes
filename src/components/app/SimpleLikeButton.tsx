@@ -11,9 +11,10 @@ interface SimpleLikeButtonProps {
   postId: string;
   initialLikesCount: number;
   userLikes?: Array<{ user_id: string }>;
+  onLikeChange?: (liked: boolean, newCount: number) => void;
 }
 
-const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeButtonProps) => {
+const SimpleLikeButton = ({ postId, initialLikesCount, userLikes, onLikeChange }: SimpleLikeButtonProps) => {
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(initialLikesCount || 0);
   const [isLoading, setIsLoading] = useState(false);
@@ -24,24 +25,41 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
 
   // Sync state with props when they change
   useEffect(() => {
+    console.log(`🔄 [SimpleLikeButton] Sincronizando estado para post ${postId}:`, {
+      initialLikesCount,
+      userLikes: userLikes?.length || 0,
+      userId: user?.id
+    });
+
     if (user && userLikes) {
       const userHasLiked = userLikes.some(like => like.user_id === user.id);
       setIsLiked(userHasLiked);
     } else {
       setIsLiked(false);
     }
+    
+    // Sempre usar a contagem inicial fornecida
     setLikesCount(initialLikesCount || 0);
-  }, [user, userLikes, initialLikesCount]);
+  }, [user, userLikes, initialLikesCount, postId]);
 
   const toggleLike = async () => {
-    if (!user || isLoading) return;
+    if (!user || isLoading) {
+      console.log('❌ [SimpleLikeButton] Usuário não logado ou carregando');
+      return;
+    }
 
     setIsLoading(true);
     
+    // Backup do estado atual
+    const previousIsLiked = isLiked;
+    const previousCount = likesCount;
+    
     try {
       if (isLiked) {
-        // Remove like
-        console.log(`👎 Removendo like do post ${postId}`);
+        // Atualização otimista - remover like
+        console.log(`👎 [SimpleLikeButton] Removendo like do post ${postId}`);
+        setIsLiked(false);
+        setLikesCount(prev => Math.max(0, prev - 1));
         
         const { error } = await supabase
           .from('likes')
@@ -51,13 +69,16 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
 
         if (error) throw error;
 
-        // Update local state after successful DB operation
-        setIsLiked(false);
-        setLikesCount(prev => Math.max(0, prev - 1));
+        // Notificar componente pai da mudança
+        if (onLikeChange) {
+          onLikeChange(false, Math.max(0, previousCount - 1));
+        }
 
       } else {
-        // Add like
-        console.log(`👍 Adicionando like ao post ${postId}`);
+        // Atualização otimista - adicionar like
+        console.log(`👍 [SimpleLikeButton] Adicionando like ao post ${postId}`);
+        setIsLiked(true);
+        setLikesCount(prev => prev + 1);
         
         const { error } = await supabase
           .from('likes')
@@ -68,21 +89,30 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
 
         if (error) throw error;
 
-        // Update local state after successful DB operation
-        setIsLiked(true);
-        setLikesCount(prev => prev + 1);
+        // Notificar componente pai da mudança
+        if (onLikeChange) {
+          onLikeChange(true, previousCount + 1);
+        }
       }
 
-      // Only invalidate queries after successful operation
-      // Use a more specific query key to avoid unnecessary refetches
-      queryClient.invalidateQueries({ 
-        queryKey: ['audio-posts'], 
-        exact: false,
-        refetchType: 'active' 
+      console.log(`✅ [SimpleLikeButton] Like processado com sucesso para post ${postId}`);
+
+      // Invalidar queries relacionadas após operação bem-sucedida
+      await queryClient.invalidateQueries({ 
+        queryKey: ['audio-posts'],
+        exact: false 
       });
 
     } catch (error) {
-      console.error('❌ Erro ao processar like:', error);
+      console.error('❌ [SimpleLikeButton] Erro ao processar like:', error);
+      
+      // Rollback em caso de erro
+      setIsLiked(previousIsLiked);
+      setLikesCount(previousCount);
+      
+      if (onLikeChange) {
+        onLikeChange(previousIsLiked, previousCount);
+      }
       
       toast({
         title: "Erro",

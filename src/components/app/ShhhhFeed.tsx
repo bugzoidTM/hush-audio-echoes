@@ -4,15 +4,19 @@ import { supabase } from '@/integrations/supabase/client';
 import InstagramAudioPost from './InstagramAudioPost';
 import { Card, CardContent } from '@/components/ui/card';
 import { Mic } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 const ShhhhFeed = () => {
+  const { user } = useAuth();
+  
   const { data: audioPosts, isLoading, error } = useQuery({
-    queryKey: ['audio-posts'],
+    queryKey: ['audio-posts', user?.id],
     queryFn: async () => {
       const { data: posts, error: postsError } = await supabase
         .from('audio_posts')
         .select('*')
         .eq('status', 'active')
+        .neq('user_id', user?.id || '') // Excluir posts do usuário logado
         .order('created_at', { ascending: false });
 
       if (postsError) throw postsError;

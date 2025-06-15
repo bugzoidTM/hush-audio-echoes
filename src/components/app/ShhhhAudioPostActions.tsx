@@ -2,6 +2,7 @@
 import { Button } from '@/components/ui/button';
 import { Heart, MessageCircle, Share } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ShhhhAudioPostActionsProps {
   isLiked: boolean;
@@ -11,6 +12,7 @@ interface ShhhhAudioPostActionsProps {
 
 const ShhhhAudioPostActions = ({ isLiked, onLike, disabled = false }: ShhhhAudioPostActionsProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleShare = async () => {
     try {
@@ -33,7 +35,7 @@ const ShhhhAudioPostActions = ({ isLiked, onLike, disabled = false }: ShhhhAudio
   };
 
   const handleReply = () => {
-    if (disabled) {
+    if (!user) {
       toast({
         title: "Login necessário",
         description: "Faça login para responder a posts",
@@ -48,6 +50,18 @@ const ShhhhAudioPostActions = ({ isLiked, onLike, disabled = false }: ShhhhAudio
     });
   };
 
+  const handleLike = () => {
+    if (!user) {
+      toast({
+        title: "Login necessário",
+        description: "Faça login para curtir posts",
+        variant: "destructive",
+      });
+      return;
+    }
+    onLike();
+  };
+
   return (
     <div className="flex items-center justify-between px-4 py-3 border-t">
       <div className="flex items-center space-x-4">
@@ -55,12 +69,14 @@ const ShhhhAudioPostActions = ({ isLiked, onLike, disabled = false }: ShhhhAudio
           variant="ghost"
           size="sm"
           className="p-0 h-auto"
-          onClick={onLike}
+          onClick={handleLike}
           disabled={disabled}
-          title={disabled ? "Faça login para curtir" : isLiked ? "Descurtir" : "Curtir"}
+          title={!user ? "Faça login para curtir" : isLiked ? "Descurtir" : "Curtir"}
         >
           <Heart 
-            className={`w-6 h-6 ${isLiked ? 'fill-red-500 text-red-500' : ''} ${disabled ? 'opacity-50' : ''}`} 
+            className={`w-6 h-6 ${
+              isLiked ? 'fill-red-500 text-red-500' : ''
+            } ${(!user || disabled) ? 'opacity-50' : ''}`} 
           />
         </Button>
         
@@ -69,9 +85,9 @@ const ShhhhAudioPostActions = ({ isLiked, onLike, disabled = false }: ShhhhAudio
           size="sm" 
           className="p-0 h-auto"
           onClick={handleReply}
-          title={disabled ? "Faça login para responder" : "Responder"}
+          title={!user ? "Faça login para responder" : "Responder"}
         >
-          <MessageCircle className={`w-6 h-6 ${disabled ? 'opacity-50' : ''}`} />
+          <MessageCircle className={`w-6 h-6 ${!user ? 'opacity-50' : ''}`} />
         </Button>
         
         <Button 

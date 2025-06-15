@@ -15,6 +15,7 @@ interface SimpleLikeButtonProps {
 
 const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeButtonProps) => {
   const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(initialLikesCount);
   const [isLoading, setIsLoading] = useState(false);
   
   const { user } = useAuth();
@@ -32,16 +33,33 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
     }
   }, [user?.id, userLikes, postId]);
 
+  // Sincronizar likes count com prop
+  useEffect(() => {
+    setLikesCount(initialLikesCount);
+  }, [initialLikesCount]);
+
   const toggleLike = async () => {
     if (!user || isLoading) {
       console.log('❌ [SimpleLikeButton] Usuário não logado ou operação em andamento');
+      toast({
+        title: "Login necessário",
+        description: "Faça login para curtir posts",
+        variant: "destructive"
+      });
       return;
     }
 
     setIsLoading(true);
     
+    // Optimistic update
+    const wasLiked = isLiked;
+    const previousCount = likesCount;
+    
+    setIsLiked(!wasLiked);
+    setLikesCount(prev => wasLiked ? Math.max(0, prev - 1) : prev + 1);
+    
     try {
-      if (isLiked) {
+      if (wasLiked) {
         console.log(`👎 [SimpleLikeButton] Removendo like do post ${postId}`);
         
         const { error } = await supabase
@@ -50,7 +68,10 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
           .eq('audio_id', postId)
           .eq('user_id', user.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ [SimpleLikeButton] Erro ao remover like:', error);
+          throw error;
+        }
 
       } else {
         console.log(`👍 [SimpleLikeButton] Adicionando like ao post ${postId}`);
@@ -62,7 +83,10 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
             user_id: user.id
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ [SimpleLikeButton] Erro ao adicionar like:', error);
+          throw error;
+        }
       }
 
       console.log(`✅ [SimpleLikeButton] Like processado com sucesso para post ${postId}`);
@@ -73,12 +97,27 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
         exact: false 
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [SimpleLikeButton] Erro ao processar like:', error);
+      
+      // Rollback optimistic update
+      setIsLiked(wasLiked);
+      setLikesCount(previousCount);
+      
+      let errorMessage = "Não foi possível curtir o áudio";
+      
+      // Handle specific error types
+      if (error.code === '23505') {
+        errorMessage = "Você já curtiu este post";
+      } else if (error.code === '42501') {
+        errorMessage = "Acesso negado - verifique se está logado";
+      } else if (error.message?.includes('RLS')) {
+        errorMessage = "Erro de permissão - tente fazer login novamente";
+      }
       
       toast({
         title: "Erro",
-        description: "Não foi possível curtir o áudio",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -92,14 +131,14 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
       variant="ghost"
       size="sm"
       className="p-0 h-auto"
-      disabled={isLoading}
+      disabled={isLoading || !user}
     >
       <Heart 
         className={`w-5 h-5 mr-1 ${
           isLiked ? 'fill-red-500 text-red-500' : 'text-muted-foreground'
         } ${isLoading ? 'opacity-50' : ''}`} 
       />
-      <span className="text-sm">{initialLikesCount}</span>
+      <span className="text-sm">{likesCount}</span>
     </Button>
   );
 };

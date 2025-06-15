@@ -36,20 +36,34 @@ const UserProfile = () => {
         if (profileError) throw profileError;
         setProfile(profileData);
 
-        // Buscar posts do usuário
+        // Buscar posts do usuário separadamente
         const { data: postsData, error: postsError } = await supabase
           .from('audio_posts')
-          .select(`
-            *,
-            profiles (username, avatar_url),
-            likes (user_id)
-          `)
+          .select('*')
           .eq('user_id', userId)
           .eq('status', 'active')
           .order('created_at', { ascending: false });
 
         if (postsError) throw postsError;
-        setPosts(postsData || []);
+
+        // Buscar dados do perfil para cada post e likes
+        const postsWithProfile = [];
+        for (const post of postsData || []) {
+          // Buscar likes para o post
+          const { data: likesData } = await supabase
+            .from('likes')
+            .select('user_id')
+            .eq('audio_id', post.id);
+
+          const postWithData = {
+            ...post,
+            profiles: profileData,
+            likes: likesData || []
+          };
+          postsWithProfile.push(postWithData);
+        }
+
+        setPosts(postsWithProfile);
 
       } catch (error) {
         console.error('Erro ao carregar perfil:', error);
@@ -77,7 +91,7 @@ const UserProfile = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2">Usuário não encontrado</h2>
-          <Button onClick={() => navigate('/instagram')}>Voltar</Button>
+          <Button onClick={() => navigate('/shhhh')}>Voltar</Button>
         </div>
       </div>
     );
@@ -92,7 +106,7 @@ const UserProfile = () => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate('/instagram')}
+          onClick={() => navigate('/shhhh')}
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>

@@ -19,18 +19,29 @@ const HeroSection = () => {
           <span className="text-primary"> seu tempo</span>
         </h1>
         
-        <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+        <h2 className="text-xl text-gray-600 mb-8 leading-relaxed">
           Compartilhe áudios autênticos que desaparecem em 24 horas. 
           Conecte-se através da voz, participe de desafios diários e 
           descubra uma nova forma de se expressar no tempo certo.
-        </p>
+        </h2>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-          <Button onClick={() => navigate('/auth')} size="lg" className="text-lg px-8 py-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+          <Button 
+            onClick={() => navigate('/auth')} 
+            size="lg" 
+            className="text-lg px-8 py-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+            aria-label="Gravar seu primeiro áudio na rede social Shhhh"
+          >
             <Mic className="w-5 h-5 mr-2" />
             Gravar Primeiro Áudio
           </Button>
-          <Button onClick={() => navigate('/auth')} variant="outline" size="lg" className="text-lg px-8 py-6">
+          <Button 
+            onClick={() => navigate('/auth')} 
+            variant="outline" 
+            size="lg" 
+            className="text-lg px-8 py-6"
+            aria-label="Ver como funciona a rede social de áudio temporário"
+          >
             <Play className="w-5 h-5 mr-2" />
             Ver Como Funciona
           </Button>
@@ -39,15 +50,15 @@ const HeroSection = () => {
         {/* Stats Preview */}
         <div className="flex items-center justify-center space-x-8 pt-8 border-t border-gray-200">
           <div className="text-center">
-            <div className="text-2xl font-bold text-primary">24h</div>
+            <div className="text-2xl font-bold text-primary" aria-label="Duração dos áudios">24h</div>
             <div className="text-sm text-muted-foreground">Duração</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-primary">∞</div>
+            <div className="text-2xl font-bold text-primary" aria-label="Possibilidades infinitas">∞</div>
             <div className="text-sm text-muted-foreground">Possibilidades</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-primary">100%</div>
+            <div className="text-2xl font-bold text-primary" aria-label="Conteúdo 100% autêntico">100%</div>
             <div className="text-sm text-muted-foreground">Autêntico</div>
           </div>
         </div>

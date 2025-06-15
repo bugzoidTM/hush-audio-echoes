@@ -65,7 +65,7 @@ const SimpleAudioFeed = () => {
 
         console.log('👤 Profiles encontrados:', profilesData?.length || 0);
 
-        // Buscar likes
+        // Buscar likes para todos os posts de uma vez
         const postIds = postsData.map(post => post.id);
         const { data: likesData, error: likesError } = await supabase
           .from('likes')
@@ -90,16 +90,16 @@ const SimpleAudioFeed = () => {
 
         console.log('🔄 Reposts encontrados:', repostsData?.length || 0);
 
-        // Combinar os dados
+        // Combinar os dados com contagem precisa de likes
         const combinedData = postsData.map(post => {
           const profile = profilesData?.find(p => p.id === post.user_id);
           const postLikes = likesData?.filter(like => like.audio_id === post.id) || [];
           const postReposts = repostsData?.filter(repost => repost.original_audio_id === post.id) || [];
           
-          // Usar SEMPRE o count real dos likes ao invés do valor salvo no post
-          const actualLikesCount = postLikes.length;
+          // Usar sempre a contagem real de likes da query
+          const realLikesCount = postLikes.length;
           
-          console.log(`📊 Post ${post.id}: likes reais=${actualLikesCount}, likes salvos=${post.likes_count}`);
+          console.log(`📊 Post ${post.id}: likes reais=${realLikesCount}`);
           
           return {
             ...post,
@@ -108,7 +108,7 @@ const SimpleAudioFeed = () => {
               avatar_url: profile.avatar_url
             } : null,
             likes: postLikes,
-            likes_count: actualLikesCount, // SEMPRE usar o count real
+            likes_count: realLikesCount, // Sempre usar contagem real
             reposts: postReposts,
             reposts_count: postReposts.length
           };
@@ -122,9 +122,10 @@ const SimpleAudioFeed = () => {
         throw error;
       }
     },
-    refetchInterval: 30000,
-    staleTime: 1000 * 60 * 5, // 5 minutos antes de considerar stale
-    gcTime: 1000 * 60 * 60 * 24, // 24 horas para garbage collection
+    staleTime: 1000 * 60 * 2, // 2 minutos - reduzido para maior sincronização
+    gcTime: 1000 * 60 * 10, // 10 minutos - reduzido
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
   if (isLoading) {

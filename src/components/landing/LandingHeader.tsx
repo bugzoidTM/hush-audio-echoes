@@ -11,14 +11,18 @@ const LandingHeader = () => {
         <div className="flex items-center space-x-2">
           <img 
             src="/lovable-uploads/a384c699-fcd9-4ac6-bcf9-612e01bab15d.png" 
-            alt="Shhhh - Rede Social de Áudio Temporário" 
+            alt="Shhhh - Logo da rede social de áudio temporário" 
             className="w-8 h-8" 
             width="32" 
             height="32" 
           />
           <h1 className="text-2xl font-bold text-primary">Shhhh</h1>
         </div>
-        <Button onClick={() => navigate('/auth')} variant="outline">
+        <Button 
+          onClick={() => navigate('/auth')} 
+          variant="outline"
+          aria-label="Entrar na rede social de áudio temporário Shhhh"
+        >
           Entrar
         </Button>
       </div>

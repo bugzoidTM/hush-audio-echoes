@@ -22,39 +22,27 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Inicializar estado baseado nos dados do servidor
+  // Sync state with props when they change
   useEffect(() => {
     if (user && userLikes) {
       const userHasLiked = userLikes.some(like => like.user_id === user.id);
       setIsLiked(userHasLiked);
-      console.log(`💖 Post ${postId}: User ${user.id} liked? ${userHasLiked}`);
     } else {
       setIsLiked(false);
     }
-  }, [user, userLikes, postId]);
-
-  // Atualizar likes count apenas quando os dados do servidor mudarem
-  useEffect(() => {
-    console.log(`📊 Post ${postId}: Atualizando likesCount de ${likesCount} para ${initialLikesCount}`);
     setLikesCount(initialLikesCount || 0);
-  }, [initialLikesCount, postId]);
+  }, [user, userLikes, initialLikesCount]);
 
   const toggleLike = async () => {
     if (!user || isLoading) return;
 
     setIsLoading(true);
     
-    // Guardar estado anterior para rollback
-    const previousIsLiked = isLiked;
-    const previousLikesCount = likesCount;
-
     try {
       if (isLiked) {
-        // Update otimista primeiro
-        setIsLiked(false);
-        setLikesCount(prev => Math.max(0, prev - 1));
-
+        // Remove like
         console.log(`👎 Removendo like do post ${postId}`);
+        
         const { error } = await supabase
           .from('likes')
           .delete()
@@ -63,28 +51,14 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
 
         if (error) throw error;
 
-        // Atualizar o cache do query client com novos dados
-        queryClient.setQueryData(['audio-posts'], (oldData: any) => {
-          if (!oldData) return oldData;
-          
-          return oldData.map((post: any) => {
-            if (post.id === postId) {
-              return {
-                ...post,
-                likes: post.likes.filter((like: any) => like.user_id !== user.id),
-                likes_count: Math.max(0, post.likes_count - 1)
-              };
-            }
-            return post;
-          });
-        });
+        // Update local state after successful DB operation
+        setIsLiked(false);
+        setLikesCount(prev => Math.max(0, prev - 1));
 
       } else {
-        // Update otimista primeiro
-        setIsLiked(true);
-        setLikesCount(prev => prev + 1);
-
+        // Add like
         console.log(`👍 Adicionando like ao post ${postId}`);
+        
         const { error } = await supabase
           .from('likes')
           .insert({
@@ -94,31 +68,21 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
 
         if (error) throw error;
 
-        // Atualizar o cache do query client com novos dados
-        queryClient.setQueryData(['audio-posts'], (oldData: any) => {
-          if (!oldData) return oldData;
-          
-          return oldData.map((post: any) => {
-            if (post.id === postId) {
-              return {
-                ...post,
-                likes: [...post.likes, { user_id: user.id }],
-                likes_count: post.likes_count + 1
-              };
-            }
-            return post;
-          });
-        });
+        // Update local state after successful DB operation
+        setIsLiked(true);
+        setLikesCount(prev => prev + 1);
       }
 
-      console.log(`✅ Like processado com sucesso para post ${postId}. Novo estado: liked=${!previousIsLiked}, count=${!previousIsLiked ? previousLikesCount + 1 : previousLikesCount - 1}`);
+      // Only invalidate queries after successful operation
+      // Use a more specific query key to avoid unnecessary refetches
+      queryClient.invalidateQueries({ 
+        queryKey: ['audio-posts'], 
+        exact: false,
+        refetchType: 'active' 
+      });
 
     } catch (error) {
-      console.error('❌ Erro ao curtir post:', error);
-      
-      // Rollback on error
-      setIsLiked(previousIsLiked);
-      setLikesCount(previousLikesCount);
+      console.error('❌ Erro ao processar like:', error);
       
       toast({
         title: "Erro",

@@ -1,4 +1,5 @@
 
+import React from "react";
 import { Check, Star, Clock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 

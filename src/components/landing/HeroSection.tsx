@@ -1,4 +1,5 @@
 
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Mic, Sparkles, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";

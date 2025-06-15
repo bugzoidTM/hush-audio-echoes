@@ -3,37 +3,43 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
+import { useSecureAuth } from '@/hooks/useSecureAuth';
 import UserProfileLink from './UserProfileLink';
 import FollowButton from './FollowButton';
 
 const UserSuggestions = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useSecureAuth({ requireAuth: false });
 
   const { data: suggestedUsers, isLoading } = useQuery({
-    queryKey: ['suggested-users'],
+    queryKey: ['suggested-users', user?.id],
     queryFn: async () => {
+      if (!isAuthenticated || !user) {
+        console.log('👤 [UserSuggestions] Usuário não autenticado');
+        return [];
+      }
+
       console.log('🔍 [UserSuggestions] Buscando usuários sugeridos...');
       
       try {
         // Buscar todos os profiles exceto o usuário atual
         let profilesQuery = supabase
           .from('profiles')
-          .select('id, username, display_name, avatar_url, followers_count');
+          .select('id, username, display_name, avatar_url, followers_count')
+          .neq('id', user.id);
 
-        if (user) {
-          profilesQuery = profilesQuery.neq('id', user.id);
+        // Buscar os IDs dos usuários que já segue
+        const { data: following, error: followingError } = await supabase
+          .from('followers')
+          .select('following_id')
+          .eq('follower_id', user.id);
 
-          // Buscar os IDs dos usuários que já segue
-          const { data: following } = await supabase
-            .from('followers')
-            .select('following_id')
-            .eq('follower_id', user.id);
+        if (followingError) {
+          console.error('❌ [UserSuggestions] Erro ao buscar seguindo:', followingError);
+        }
 
-          const followingIds = following?.map(f => f.following_id) || [];
-          if (followingIds.length > 0) {
-            profilesQuery = profilesQuery.not('id', 'in', `(${followingIds.join(',')})`);
-          }
+        const followingIds = following?.map(f => f.following_id) || [];
+        if (followingIds.length > 0) {
+          profilesQuery = profilesQuery.not('id', 'in', `(${followingIds.join(',')})`);
         }
 
         const { data: profiles, error: profilesError } = await profilesQuery.limit(5);
@@ -84,8 +90,31 @@ const UserSuggestions = () => {
         throw error;
       }
     },
-    enabled: !!user,
+    enabled: isAuthenticated && !!user,
+    retry: (failureCount, error: any) => {
+      // Don't retry on auth errors
+      if (error?.code === '42501' || error?.code === 'PGRST301') {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
+
+  if (!isAuthenticated) {
+    return (
+      <div className="space-y-4">
+        <h3 className="font-semibold text-muted-foreground">Descubra pessoas</h3>
+        <div className="text-center p-4 bg-muted/50 rounded-lg">
+          <p className="text-sm text-muted-foreground mb-2">
+            Faça login para descobrir pessoas interessantes!
+          </p>
+          <Button variant="outline" size="sm" asChild>
+            <a href="/auth">Entrar</a>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -108,7 +137,16 @@ const UserSuggestions = () => {
   }
 
   if (!suggestedUsers || suggestedUsers.length === 0) {
-    return null;
+    return (
+      <div className="space-y-4">
+        <h3 className="font-semibold text-muted-foreground">Sugestões para você</h3>
+        <div className="text-center p-4 bg-muted/50 rounded-lg">
+          <p className="text-sm text-muted-foreground">
+            Nenhuma sugestão no momento.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

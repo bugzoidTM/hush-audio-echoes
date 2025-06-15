@@ -4,56 +4,96 @@ import { supabase } from '@/integrations/supabase/client';
 import ShhhhAudioPost from './ShhhhAudioPost';
 import { Card, CardContent } from '@/components/ui/card';
 import { Mic } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useSecureAuth } from '@/hooks/useSecureAuth';
 
 const ShhhhFeed = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useSecureAuth({ requireAuth: false });
   const queryClient = useQueryClient();
   
   const { data: audioPosts, isLoading, error } = useQuery({
     queryKey: ['audio-posts', user?.id],
     queryFn: async () => {
-      const { data: posts, error: postsError } = await supabase
-        .from('audio_posts')
-        .select('*')
-        .eq('status', 'active')
-        .neq('user_id', user?.id || '') // Excluir posts do usuário logado
-        .order('created_at', { ascending: false });
-
-      if (postsError) throw postsError;
-
-      if (!posts || posts.length === 0) return [];
-
-      // Get unique user IDs
-      const userIds = [...new Set(posts.map(post => post.user_id).filter(Boolean))];
+      console.log('🔍 [ShhhhFeed] Buscando posts de áudio...');
       
-      // Fetch profiles for all users
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, avatar_url')
-        .in('id', userIds);
+      try {
+        // Build the query with proper authorization checks
+        let query = supabase
+          .from('audio_posts')
+          .select('*')
+          .eq('status', 'active')
+          .order('created_at', { ascending: false });
 
-      if (profilesError) throw profilesError;
+        // If user is authenticated, exclude their own posts
+        if (isAuthenticated && user) {
+          query = query.neq('user_id', user.id);
+        }
 
-      // Fetch likes for all posts
-      const { data: likes, error: likesError } = await supabase
-        .from('likes')
-        .select('user_id, audio_id')
-        .in('audio_id', posts.map(post => post.id));
+        const { data: posts, error: postsError } = await query;
 
-      if (likesError) throw likesError;
+        if (postsError) {
+          console.error('❌ [ShhhhFeed] Erro ao buscar posts:', postsError);
+          throw postsError;
+        }
 
-      // Combine data
-      return posts.map(post => ({
-        ...post,
-        profiles: profiles?.find(profile => profile.id === post.user_id) || null,
-        likes: likes?.filter(like => like.audio_id === post.id) || []
-      }));
+        if (!posts || posts.length === 0) {
+          console.log('📭 [ShhhhFeed] Nenhum post encontrado');
+          return [];
+        }
+
+        // Get unique user IDs
+        const userIds = [...new Set(posts.map(post => post.user_id).filter(Boolean))];
+        
+        // Fetch profiles for all users
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url')
+          .in('id', userIds);
+
+        if (profilesError) {
+          console.error('❌ [ShhhhFeed] Erro ao buscar profiles:', profilesError);
+          throw profilesError;
+        }
+
+        // Fetch likes for all posts (only if user is authenticated)
+        let likes: any[] = [];
+        if (isAuthenticated) {
+          const { data: likesData, error: likesError } = await supabase
+            .from('likes')
+            .select('user_id, audio_id')
+            .in('audio_id', posts.map(post => post.id));
+
+          if (likesError) {
+            console.error('❌ [ShhhhFeed] Erro ao buscar likes:', likesError);
+          } else {
+            likes = likesData || [];
+          }
+        }
+
+        // Combine data
+        const enrichedPosts = posts.map(post => ({
+          ...post,
+          profiles: profiles?.find(profile => profile.id === post.user_id) || null,
+          likes: likes.filter(like => like.audio_id === post.id) || []
+        }));
+
+        console.log('✅ [ShhhhFeed] Posts carregados:', enrichedPosts.length);
+        return enrichedPosts;
+
+      } catch (error) {
+        console.error('💥 [ShhhhFeed] Erro geral:', error);
+        throw error;
+      }
+    },
+    retry: (failureCount, error: any) => {
+      // Don't retry on auth errors
+      if (error?.code === '42501' || error?.code === 'PGRST301') {
+        return false;
+      }
+      return failureCount < 3;
     },
   });
 
   const handlePostDeleted = () => {
-    // Invalidar e refetch dos dados
     queryClient.invalidateQueries({ queryKey: ['audio-posts', user?.id] });
   };
 
@@ -72,10 +112,21 @@ const ShhhhFeed = () => {
   }
 
   if (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     return (
       <Card>
         <CardContent className="p-6 text-center">
-          <p className="text-muted-foreground">Erro ao carregar áudios</p>
+          <p className="text-muted-foreground">
+            {errorMessage.includes('42501') 
+              ? 'Você precisa estar logado para ver os posts' 
+              : 'Erro ao carregar áudios'
+            }
+          </p>
+          {!isAuthenticated && (
+            <p className="text-sm text-blue-600 mt-2">
+              <a href="/auth">Faça login para continuar</a>
+            </p>
+          )}
         </CardContent>
       </Card>
     );
@@ -88,8 +139,16 @@ const ShhhhFeed = () => {
           <Mic className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
           <h3 className="text-lg font-semibold mb-2">Nenhum áudio ainda</h3>
           <p className="text-muted-foreground">
-            Seja o primeiro a compartilhar um áudio temporário!
+            {isAuthenticated 
+              ? 'Seja o primeiro a compartilhar um áudio temporário!' 
+              : 'Faça login para ver e compartilhar áudios!'
+            }
           </p>
+          {!isAuthenticated && (
+            <p className="text-sm text-blue-600 mt-2">
+              <a href="/auth">Entrar agora</a>
+            </p>
+          )}
         </CardContent>
       </Card>
     );

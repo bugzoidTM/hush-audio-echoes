@@ -1,9 +1,10 @@
 
 import { Card, CardContent } from '@/components/ui/card';
-import { useAuth } from '@/hooks/useAuth';
+import { useSecureAuth } from '@/hooks/useSecureAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useRateLimiter } from '@/hooks/useRateLimiter';
 import ShhhhAudioPostHeader from './ShhhhAudioPostHeader';
 import ShhhhAudioPostContent from './ShhhhAudioPostContent';
 import ShhhhAudioPlayer from './ShhhhAudioPlayer';
@@ -35,49 +36,95 @@ interface ShhhhAudioPostProps {
 }
 
 const ShhhhAudioPost = ({ post, onPostDeleted }: ShhhhAudioPostProps) => {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useSecureAuth({ requireAuth: false });
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const likeRateLimiter = useRateLimiter('like_action', {
+    maxAttempts: 10,
+    windowMs: 60000, // 1 minute
+  });
 
   const isLiked = post.likes.some(like => like.user_id === user?.id);
 
   const handleLike = async () => {
-    if (!user) return;
+    if (!isAuthenticated) {
+      toast({
+        title: "Login necessário",
+        description: "Faça login para curtir posts",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+
+    if (!likeRateLimiter.checkRateLimit()) {
+      toast({
+        title: "Muitas curtidas",
+        description: "Aguarde antes de curtir novamente",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       if (isLiked) {
-        await supabase
+        const { error } = await supabase
           .from('likes')
           .delete()
-          .eq('user_id', user.id)
+          .eq('user_id', user!.id)
           .eq('audio_id', post.id);
+
+        if (error) throw error;
       } else {
-        await supabase
+        const { error } = await supabase
           .from('likes')
           .insert({
-            user_id: user.id,
+            user_id: user!.id,
             audio_id: post.id,
           });
+
+        if (error) throw error;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [ShhhhAudioPost] Erro ao processar like:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível processar a ação",
-        variant: "destructive",
-      });
+      
+      // Handle specific error types
+      if (error.code === '23505') { // Unique constraint violation
+        toast({
+          title: "Ação já realizada",
+          description: "Você já curtiu este post",
+          variant: "destructive",
+        });
+      } else if (error.code === '42501') { // RLS policy violation
+        toast({
+          title: "Acesso negado",
+          description: "Você não tem permissão para esta ação",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Não foi possível processar a curtida",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   const handleDelete = async () => {
-    if (!user || user.id !== post.user_id) {
-      console.error('❌ [ShhhhAudioPost] Usuário não autorizado para deletar o post');
+    if (!isAuthenticated || user!.id !== post.user_id) {
+      toast({
+        title: "Acesso negado",
+        description: "Você só pode deletar seus próprios posts",
+        variant: "destructive",
+      });
       return;
     }
 
     console.log('🗑️ [ShhhhAudioPost] Tentando deletar post:', { 
       postId: post.id, 
-      userId: user.id, 
+      userId: user!.id, 
       postUserId: post.user_id 
     });
 
@@ -85,7 +132,8 @@ const ShhhhAudioPost = ({ post, onPostDeleted }: ShhhhAudioPostProps) => {
       const { error } = await supabase
         .from('audio_posts')
         .update({ status: 'deleted' })
-        .eq('id', post.id);
+        .eq('id', post.id)
+        .eq('user_id', user!.id); // Double check ownership
 
       if (error) {
         console.error('❌ [ShhhhAudioPost] Erro ao deletar post:', error);
@@ -99,17 +147,25 @@ const ShhhhAudioPost = ({ post, onPostDeleted }: ShhhhAudioPostProps) => {
         description: "Seu post foi excluído com sucesso",
       });
 
-      // Notificar o componente pai que o post foi deletado
       if (onPostDeleted) {
         onPostDeleted();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [ShhhhAudioPost] Erro completo:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir o post",
-        variant: "destructive",
-      });
+      
+      if (error.code === '42501') { // RLS policy violation
+        toast({
+          title: "Acesso negado",
+          description: "Você não tem permissão para deletar este post",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Não foi possível excluir o post",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -138,6 +194,7 @@ const ShhhhAudioPost = ({ post, onPostDeleted }: ShhhhAudioPostProps) => {
         <ShhhhAudioPostActions 
           isLiked={isLiked}
           onLike={handleLike}
+          disabled={!isAuthenticated}
         />
 
         <ShhhhAudioPostStats 

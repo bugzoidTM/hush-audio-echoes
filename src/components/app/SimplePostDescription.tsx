@@ -1,28 +1,29 @@
 
+import HashtagLink from './HashtagLink';
+
 interface SimplePostDescriptionProps {
-  description: string | null | undefined;
+  description: string;
 }
 
 const SimplePostDescription = ({ description }: SimplePostDescriptionProps) => {
-  const renderDescription = (text: string | null | undefined) => {
-    if (!text) return 'Sem descrição';
+  if (!description) return null;
+
+  // Função para processar texto e tornar hashtags clicáveis
+  const processDescription = (text: string) => {
+    const parts = text.split(/(\#\w+)/g);
     
-    return text.split(/(\s+)/).map((word, index) => {
-      if (word.startsWith('#')) {
-        return (
-          <span key={index} className="text-blue-500 font-medium">
-            {word}
-          </span>
-        );
+    return parts.map((part, index) => {
+      if (part.startsWith('#')) {
+        return <HashtagLink key={index} hashtag={part} />;
       }
-      return word;
+      return part;
     });
   };
 
   return (
-    <p className="text-sm leading-relaxed">
-      {renderDescription(description)}
-    </p>
+    <div className="text-sm text-muted-foreground">
+      {processDescription(description)}
+    </div>
   );
 };
 

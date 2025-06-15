@@ -1,22 +1,24 @@
 
 import { useState, useRef, useCallback } from 'react';
 
+const MAX_RECORDING_TIME = 30; // 30 segundos
+
 export const useRecordingTimer = () => {
   const [duration, setDuration] = useState(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const startTimer = useCallback((onMaxDuration?: () => void) => {
-    console.log('🕐 [useRecordingTimer] Iniciando timer...');
-    setDuration(0);
+  const startTimer = useCallback((onMaxTime?: () => void) => {
+    console.log('⏱️ [useRecordingTimer] Iniciando timer');
     
-    timerRef.current = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       setDuration(prev => {
         const newDuration = prev + 1;
-        console.log('⏰ [useRecordingTimer] Timer tick:', newDuration);
         
-        if (newDuration >= 60) {
-          console.log('⏰ [useRecordingTimer] 60s atingidos, parando...');
-          onMaxDuration?.();
+        // Parar automaticamente aos 30 segundos
+        if (newDuration >= MAX_RECORDING_TIME) {
+          console.log('⏱️ [useRecordingTimer] Tempo máximo atingido (30s)');
+          if (onMaxTime) onMaxTime();
+          return MAX_RECORDING_TIME;
         }
         
         return newDuration;
@@ -25,20 +27,25 @@ export const useRecordingTimer = () => {
   }, []);
 
   const stopTimer = useCallback(() => {
-    console.log('⏹️ [useRecordingTimer] Parando timer...');
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+    console.log('⏱️ [useRecordingTimer] Parando timer');
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
   }, []);
 
   const resetTimer = useCallback(() => {
-    stopTimer();
+    console.log('⏱️ [useRecordingTimer] Resetando timer');
     setDuration(0);
-  }, [stopTimer]);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
 
   return {
     duration,
+    maxDuration: MAX_RECORDING_TIME,
     startTimer,
     stopTimer,
     resetTimer

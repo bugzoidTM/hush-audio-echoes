@@ -58,6 +58,7 @@ export type Database = {
           likes_count: number
           parent_id: string | null
           replies_count: number
+          reposts_count: number
           status: Database["public"]["Enums"]["audio_status"]
           title: string | null
           transcription: string | null
@@ -77,6 +78,7 @@ export type Database = {
           likes_count?: number
           parent_id?: string | null
           replies_count?: number
+          reposts_count?: number
           status?: Database["public"]["Enums"]["audio_status"]
           title?: string | null
           transcription?: string | null
@@ -96,6 +98,7 @@ export type Database = {
           likes_count?: number
           parent_id?: string | null
           replies_count?: number
+          reposts_count?: number
           status?: Database["public"]["Enums"]["audio_status"]
           title?: string | null
           transcription?: string | null
@@ -123,6 +126,74 @@ export type Database = {
             columns: ["challenge_id"]
             isOneToOne: false
             referencedRelation: "daily_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audio_replies: {
+        Row: {
+          created_at: string
+          id: string
+          parent_audio_id: string
+          reply_audio_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          parent_audio_id: string
+          reply_audio_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          parent_audio_id?: string
+          reply_audio_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_replies_parent_audio_id_fkey"
+            columns: ["parent_audio_id"]
+            isOneToOne: false
+            referencedRelation: "audio_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audio_replies_reply_audio_id_fkey"
+            columns: ["reply_audio_id"]
+            isOneToOne: false
+            referencedRelation: "audio_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audio_reposts: {
+        Row: {
+          created_at: string
+          id: string
+          original_audio_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          original_audio_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          original_audio_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_reposts_original_audio_id_fkey"
+            columns: ["original_audio_id"]
+            isOneToOne: false
+            referencedRelation: "audio_posts"
             referencedColumns: ["id"]
           },
         ]

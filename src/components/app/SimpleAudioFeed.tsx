@@ -11,14 +11,17 @@ interface AudioPost {
   audio_url: string;
   duration: number;
   created_at: string;
-  expires_at: string; // Add expires_at to the interface
+  expires_at: string;
   user_id: string;
   likes_count: number;
+  replies_count: number;
+  reposts_count: number;
   profiles?: {
     username?: string;
     avatar_url?: string;
   } | null;
   likes?: Array<{ user_id: string }>;
+  reposts?: Array<{ user_id: string }>;
 }
 
 const SimpleAudioFeed = () => {
@@ -28,7 +31,7 @@ const SimpleAudioFeed = () => {
       console.log('🎵 Iniciando busca por posts de áudio...');
       
       try {
-        // Primeiro, vamos buscar os posts básicos
+        // Buscar posts básicos
         const { data: postsData, error: postsError } = await supabase
           .from('audio_posts')
           .select('*')
@@ -47,7 +50,7 @@ const SimpleAudioFeed = () => {
           return [];
         }
 
-        // Agora vamos buscar os profiles separadamente
+        // Buscar profiles
         const userIds = [...new Set(postsData.map(post => post.user_id))];
         console.log('👥 Buscando profiles para usuários:', userIds);
 
@@ -58,12 +61,11 @@ const SimpleAudioFeed = () => {
 
         if (profilesError) {
           console.error('❌ Erro ao buscar profiles:', profilesError);
-          // Continuar mesmo se não conseguir buscar profiles
         }
 
         console.log('👤 Profiles encontrados:', profilesData?.length || 0);
 
-        // Buscar likes separadamente
+        // Buscar likes
         const postIds = postsData.map(post => post.id);
         const { data: likesData, error: likesError } = await supabase
           .from('likes')
@@ -76,10 +78,23 @@ const SimpleAudioFeed = () => {
 
         console.log('❤️ Likes encontrados:', likesData?.length || 0);
 
+        // Buscar reposts
+        const { data: repostsData, error: repostsError } = await supabase
+          .from('audio_reposts')
+          .select('user_id, original_audio_id')
+          .in('original_audio_id', postIds);
+
+        if (repostsError) {
+          console.error('❌ Erro ao buscar reposts:', repostsError);
+        }
+
+        console.log('🔄 Reposts encontrados:', repostsData?.length || 0);
+
         // Combinar os dados
         const combinedData = postsData.map(post => {
           const profile = profilesData?.find(p => p.id === post.user_id);
           const postLikes = likesData?.filter(like => like.audio_id === post.id) || [];
+          const postReposts = repostsData?.filter(repost => repost.original_audio_id === post.id) || [];
           
           return {
             ...post,
@@ -88,7 +103,9 @@ const SimpleAudioFeed = () => {
               avatar_url: profile.avatar_url
             } : null,
             likes: postLikes,
-            likes_count: postLikes.length
+            likes_count: postLikes.length,
+            reposts: postReposts,
+            reposts_count: postReposts.length
           };
         });
 

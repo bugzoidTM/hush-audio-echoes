@@ -9,35 +9,43 @@ const InstagramFeed = () => {
   const { data: audioPosts, isLoading, error } = useQuery({
     queryKey: ['instagram-audio-posts'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: posts, error: postsError } = await supabase
         .from('audio_posts')
-        .select(`
-          *,
-          profiles (
-            username,
-            display_name,
-            avatar_url
-          ),
-          likes (
-            user_id
-          )
-        `)
+        .select('*')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (postsError) throw postsError;
+
+      if (!posts || posts.length === 0) return [];
+
+      // Get unique user IDs
+      const userIds = [...new Set(posts.map(post => post.user_id).filter(Boolean))];
       
-      // Mapear os dados para garantir que tenham todas as propriedades necessárias
-      return data?.map(post => ({
+      // Fetch profiles for all users
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Fetch likes for all posts
+      const { data: likes, error: likesError } = await supabase
+        .from('likes')
+        .select('user_id, audio_id')
+        .in('audio_id', posts.map(post => post.id));
+
+      if (likesError) throw likesError;
+
+      // Combine data
+      return posts.map(post => ({
         ...post,
         replies_count: post.replies_count || 0,
         reposts_count: post.reposts_count || 0,
-        profiles: post.profiles ? {
-          username: post.profiles.username || null,
-          display_name: post.profiles.display_name || null,
-          avatar_url: post.profiles.avatar_url || null
-        } : null
-      })) || [];
+        profiles: profiles?.find(profile => profile.id === post.user_id) || null,
+        likes: likes?.filter(like => like.audio_id === post.id) || []
+      }));
     },
   });
 

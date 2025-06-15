@@ -76,7 +76,8 @@ const ShhhhFeed = () => {
             ...post,
             profiles: profiles?.find(profile => profile.id === post.user_id) || null,
             likes: postLikes,
-            likes_count: postLikes.length
+            likes_count: post.likes_count || 0, // Use the database likes_count
+            replies_count: post.replies_count || 0
           };
         });
 

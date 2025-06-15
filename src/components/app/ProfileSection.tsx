@@ -50,7 +50,8 @@ const ProfileSection = () => {
               ...post,
               profiles: userProfile,
               likes: likesData || [],
-              likes_count: (likesData || []).length
+              likes_count: post.likes_count || 0,
+              replies_count: post.replies_count || 0
             };
             postsWithData.push(postWithData);
           }

@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import UserSuggestions from './UserSuggestions';
 import RecordAudioModal from './RecordAudioModal';
 import FollowersStories from './FollowersStories';
+import UserProfileLink from './UserProfileLink';
 
 interface ShhhhLayoutProps {
   children: ReactNode;
@@ -171,7 +172,17 @@ const ShhhhLayout = ({ children, onSectionChange }: ShhhhLayoutProps) => {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-semibold">{displayName}</p>
+                  {user?.id ? (
+                    <UserProfileLink 
+                      userId={user.id} 
+                      username={userProfile?.username}
+                      className="font-semibold"
+                    >
+                      {displayName}
+                    </UserProfileLink>
+                  ) : (
+                    <p className="font-semibold">{displayName}</p>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     {userProfile?.bio || 'Compartilhando áudios temporários'}
                   </p>

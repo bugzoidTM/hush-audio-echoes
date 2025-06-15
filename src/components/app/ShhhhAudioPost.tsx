@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useRateLimiter } from '@/hooks/useRateLimiter';
+import { useQueryClient } from '@tanstack/react-query';
 import ShhhhAudioPostHeader from './ShhhhAudioPostHeader';
 import ShhhhAudioPostContent from './ShhhhAudioPostContent';
 import ShhhhAudioPlayer from './ShhhhAudioPlayer';
@@ -39,6 +40,7 @@ const ShhhhAudioPost = ({ post, onPostDeleted }: ShhhhAudioPostProps) => {
   const { user, isAuthenticated } = useSecureAuth({ requireAuth: false });
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const likeRateLimiter = useRateLimiter('like_action', {
     maxAttempts: 10,
@@ -86,6 +88,9 @@ const ShhhhAudioPost = ({ post, onPostDeleted }: ShhhhAudioPostProps) => {
 
         if (error) throw error;
       }
+
+      // Invalidate queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['audio-posts'] });
     } catch (error: any) {
       console.error('❌ [ShhhhAudioPost] Erro ao processar like:', error);
       
@@ -199,8 +204,8 @@ const ShhhhAudioPost = ({ post, onPostDeleted }: ShhhhAudioPostProps) => {
         />
 
         <ShhhhAudioPostStats 
-          likesCount={post.likes_count}
-          repliesCount={post.replies_count}
+          likesCount={post.likes_count || 0}
+          repliesCount={post.replies_count || 0}
         />
       </CardContent>
     </Card>

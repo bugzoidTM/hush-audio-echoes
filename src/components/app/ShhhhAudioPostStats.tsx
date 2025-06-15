@@ -5,17 +5,18 @@ interface ShhhhAudioPostStatsProps {
 }
 
 const ShhhhAudioPostStats = ({ likesCount, repliesCount }: ShhhhAudioPostStatsProps) => {
+  const safelikesCount = likesCount || 0;
+  const safeRepliesCount = repliesCount || 0;
+
   return (
     <div className="px-4 pb-4">
-      {likesCount > 0 && (
-        <p className="text-sm font-semibold mb-1">
-          {likesCount} {likesCount === 1 ? 'curtida' : 'curtidas'}
-        </p>
-      )}
+      <p className="text-sm font-semibold mb-1">
+        {safelikesCount} {safelikesCount === 1 ? 'curtida' : 'curtidas'}
+      </p>
       
-      {repliesCount > 0 && (
+      {safeRepliesCount > 0 && (
         <p className="text-sm text-muted-foreground">
-          Ver todos os {repliesCount} comentários
+          Ver todos os {safeRepliesCount} comentários
         </p>
       )}
     </div>

@@ -1,42 +1,31 @@
-
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mic, Clock, Users, Heart, Sparkles, Play } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-
 const Index = () => {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
-
+  const {
+    user,
+    loading
+  } = useAuth();
   useEffect(() => {
     if (!loading && user) {
       navigate('/app');
     }
   }, [user, loading, navigate]);
-
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
+    return <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+  return <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
       {/* Header */}
       <header className="border-b bg-background/95 backdrop-blur" role="banner">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <img 
-              src="/lovable-uploads/a384c699-fcd9-4ac6-bcf9-612e01bab15d.png"
-              alt="Shhhh - Rede Social de Áudio Temporário" 
-              className="w-8 h-8"
-              width="32"
-              height="32"
-            />
+            <img src="/lovable-uploads/a384c699-fcd9-4ac6-bcf9-612e01bab15d.png" alt="Shhhh - Rede Social de Áudio Temporário" className="w-8 h-8" width="32" height="32" />
             <h1 className="text-2xl font-bold text-primary">Shhhh</h1>
           </div>
           <Button onClick={() => navigate('/auth')} variant="outline">
@@ -66,20 +55,11 @@ const Index = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-              <Button 
-                onClick={() => navigate('/auth')} 
-                size="lg"
-                className="text-lg px-8 py-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-              >
+              <Button onClick={() => navigate('/auth')} size="lg" className="text-lg px-8 py-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
                 <Mic className="w-5 h-5 mr-2" />
                 Gravar Primeiro Áudio
               </Button>
-              <Button 
-                onClick={() => navigate('/auth')} 
-                variant="outline"
-                size="lg"
-                className="text-lg px-8 py-6"
-              >
+              <Button onClick={() => navigate('/auth')} variant="outline" size="lg" className="text-lg px-8 py-6">
                 <Play className="w-5 h-5 mr-2" />
                 Ver Como Funciona
               </Button>
@@ -241,12 +221,7 @@ const Index = () => {
             <p className="text-xl mb-8 opacity-90">
               Junte-se à revolução do áudio temporário e comece a gravar seus primeiros áudios agora.
             </p>
-            <Button 
-              onClick={() => navigate('/auth')} 
-              variant="secondary"
-              size="lg"
-              className="text-lg px-8 py-6 bg-white text-purple-600 hover:bg-gray-100"
-            >
+            <Button onClick={() => navigate('/auth')} variant="secondary" size="lg" className="text-lg px-8 py-6 bg-white text-purple-600 hover:bg-gray-100">
               <Mic className="w-5 h-5 mr-2" />
               Criar Conta Grátis
             </Button>
@@ -258,22 +233,12 @@ const Index = () => {
       <footer className="bg-background border-t py-8" role="contentinfo">
         <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <img 
-              src="/lovable-uploads/a384c699-fcd9-4ac6-bcf9-612e01bab15d.png"
-              alt="Shhhh Logo" 
-              className="w-6 h-6"
-              width="24"
-              height="24"
-            />
+            <img src="/lovable-uploads/a384c699-fcd9-4ac6-bcf9-612e01bab15d.png" alt="Shhhh Logo" className="w-6 h-6" width="24" height="24" />
             <span className="font-bold text-primary">Shhhh - Sua voz, seu tempo</span>
           </div>
-          <p className="text-muted-foreground">
-            &copy; 2024 Shhhh Audio Social Network. Conectando vozes autênticas através do tempo.
-          </p>
+          <p className="text-muted-foreground">© 2025 Shhhh Audio Social Network. Conectando vozes autênticas através do tempo.</p>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;

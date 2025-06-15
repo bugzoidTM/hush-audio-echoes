@@ -16,14 +16,15 @@ const UserSuggestions = () => {
       console.log('🔍 [UserSuggestions] Buscando usuários sugeridos...');
       
       try {
-        // Buscar todos os profiles exceto o usuário atual e os que já segue
+        // Buscar todos os profiles exceto o usuário atual
         let profilesQuery = supabase
           .from('profiles')
-          .select('id, username, display_name, avatar_url, followers_count')
-          .neq('id', user?.id);
+          .select('id, username, display_name, avatar_url, followers_count');
 
-        // Se o usuário está logado, excluir os que já segue
         if (user) {
+          profilesQuery = profilesQuery.neq('id', user.id);
+
+          // Buscar os IDs dos usuários que já segue
           const { data: following } = await supabase
             .from('followers')
             .select('following_id')

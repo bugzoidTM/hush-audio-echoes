@@ -22,14 +22,21 @@ const FollowButton = ({ userId, initialFollowing = false }: FollowButtonProps) =
     queryFn: async () => {
       if (!user || user.id === userId) return false;
 
+      console.log('🔍 [FollowButton] Checking follow status for:', { follower: user.id, following: userId });
+
       const { data, error } = await supabase
         .from('followers')
         .select('id')
         .eq('follower_id', user.id)
         .eq('following_id', userId)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) {
+        console.error('❌ [FollowButton] Error checking follow status:', error);
+        throw error;
+      }
+
+      console.log('✅ [FollowButton] Follow status result:', !!data);
       return !!data;
     },
     enabled: !!user && user.id !== userId,
@@ -42,6 +49,7 @@ const FollowButton = ({ userId, initialFollowing = false }: FollowButtonProps) =
     setIsLoading(true);
     try {
       if (isFollowing) {
+        console.log('🔄 [FollowButton] Unfollowing user:', userId);
         const { error } = await supabase
           .from('followers')
           .delete()
@@ -55,6 +63,7 @@ const FollowButton = ({ userId, initialFollowing = false }: FollowButtonProps) =
           description: "Você parou de seguir este usuário",
         });
       } else {
+        console.log('🔄 [FollowButton] Following user:', userId);
         const { error } = await supabase
           .from('followers')
           .insert({
@@ -77,6 +86,7 @@ const FollowButton = ({ userId, initialFollowing = false }: FollowButtonProps) =
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
 
     } catch (error: any) {
+      console.error('❌ [FollowButton] Error in follow action:', error);
       toast({
         title: "Erro",
         description: "Não foi possível processar a ação",

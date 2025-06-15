@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import { useAuth } from './useAuth';
 import { useSecurityLogger } from './useSecurityLogger';
 
 interface LoginAttempt {
@@ -10,7 +9,6 @@ interface LoginAttempt {
 }
 
 export const useAuthSecurity = () => {
-  const { user } = useAuth();
   const { logLoginAttempt, logSuspiciousActivity } = useSecurityLogger();
   const [loginAttempts, setLoginAttempts] = useState<LoginAttempt[]>([]);
   const [isAccountLocked, setIsAccountLocked] = useState(false);

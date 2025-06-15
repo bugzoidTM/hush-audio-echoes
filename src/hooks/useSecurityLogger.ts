@@ -1,5 +1,5 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
 
 interface SecurityEvent {
   event_type: 'login_attempt' | 'login_success' | 'login_failure' | 'suspicious_activity' | 'data_access';
@@ -10,16 +10,17 @@ interface SecurityEvent {
 }
 
 export const useSecurityLogger = () => {
-  const { user } = useAuth();
-
   const logSecurityEvent = async (event: SecurityEvent) => {
     try {
+      // Get current user from Supabase session instead of useAuth to avoid circular dependency
+      const { data: { session } } = await supabase.auth.getSession();
+      
       // Get client info
       const clientInfo = {
         ip_address: event.ip_address || 'unknown',
         user_agent: event.user_agent || navigator.userAgent,
         timestamp: new Date().toISOString(),
-        user_id: event.user_id || user?.id || 'anonymous'
+        user_id: event.user_id || session?.user?.id || 'anonymous'
       };
 
       // Log to console for immediate visibility

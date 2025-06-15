@@ -5,7 +5,6 @@ import { Heart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { useQueryClient } from '@tanstack/react-query';
 
 interface SimpleLikeButtonProps {
   postId: string;
@@ -20,7 +19,6 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
   
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (user && userLikes) {
@@ -72,10 +70,7 @@ const SimpleLikeButton = ({ postId, initialLikesCount, userLikes }: SimpleLikeBu
         if (error) throw error;
       }
 
-      // Aguardar um pouco antes de invalidar para garantir que a operação foi processada
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['audio-posts'] });
-      }, 100);
+      // Removido a invalidação das queries para evitar conflito com updates otimistas
 
     } catch (error) {
       console.error('❌ Erro ao curtir post:', error);

@@ -99,7 +99,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Forçar atualização da página após login bem-sucedido
       if (data.user) {
         setTimeout(() => {
-          window.location.href = '/shhhh';
+          window.location.href = '/app'; // Corrigido de '/shhhh' para '/app'
         }, 100);
       }
 
@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       cleanupAuthState();
       
-      const redirectUrl = `${window.location.origin}/shhhh`;
+      const redirectUrl = `${window.location.origin}/app`; // Corrigido de '/shhhh' para '/app'
       
       const { data, error } = await supabase.auth.signUp({
         email,

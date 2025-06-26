@@ -1,1 +1,26 @@
-project_id = "yvvhhtvtweqwfksrbsqr"
+project_id = "nutef-self-hosted"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+api_url = "https://supabase.nutef.com"
+
+[auth]
+enabled = true
+site_url = "https://seu-dominio.com"
+additional_redirect_urls = ["http://localhost:3000", "http://localhost:5173"]
+jwt_expiry = 3600
+enable_signup = true
+jwt_secret = "0c0d73e9cf23a10dc0063c8f916943893272f3c4"

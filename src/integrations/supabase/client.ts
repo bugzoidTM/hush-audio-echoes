@@ -2,10 +2,15 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://yvvhhtvtweqwfksrbsqr.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2dmhodHZ0d2Vxd2Zrc3Jic3FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2ODk3MDMsImV4cCI6MjA2NTI2NTcwM30.ocRj_4aLXE-_fff2fb9QLqdIdSbl-3A_ZRm5aQqCDI8";
+// Configurações para Supabase Self-hosted
+const SUPABASE_URL = "https://supabase.nutef.com";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0.zii4FynaxJNS8fGXKYKcnqiUw0DzIuLFB0MMz4ImjEE";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Configuração temporária para usar bucket public para áudios
+export const AUDIO_BUCKET = 'public';
+export const AUDIO_FOLDER = 'audio';

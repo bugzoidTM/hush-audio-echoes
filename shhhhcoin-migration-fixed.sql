@@ -428,11 +428,17 @@ CREATE TRIGGER create_wallet_on_user_creation
     EXECUTE FUNCTION create_shhhhcoin_wallet();
 
 -- Trigger para processar convite quando usuário posta primeiro áudio
-DROP TRIGGER IF EXISTS process_referral_on_first_post ON audio_posts;
-CREATE TRIGGER process_referral_on_first_post
-    AFTER INSERT ON audio_posts
-    FOR EACH ROW
-    EXECUTE FUNCTION process_first_audio_post();
+-- Só criar se a tabela audio_posts existir
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'audio_posts') THEN
+        DROP TRIGGER IF EXISTS process_referral_on_first_post ON audio_posts;
+        CREATE TRIGGER process_referral_on_first_post
+            AFTER INSERT ON audio_posts
+            FOR EACH ROW
+            EXECUTE FUNCTION process_first_audio_post();
+    END IF;
+END $$;
 
 -- ================================================
 -- PRODUTOS INICIAIS

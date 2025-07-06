@@ -1,8 +1,8 @@
-
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import UserSuggestions from './UserSuggestions';
 import UserProfileLink from './UserProfileLink';
+import WalletBalance from '@/components/shhhhcoin/WalletBalance';
 
 interface RightSidebarProps {
   user: any;
@@ -39,6 +39,11 @@ const RightSidebar = ({ user, userProfile, displayName }: RightSidebarProps) => 
             </p>
           </div>
         </div>
+
+        <Separator />
+
+        {/* Carteira Shhhhcoin */}
+        <WalletBalance />
 
         <Separator />
 

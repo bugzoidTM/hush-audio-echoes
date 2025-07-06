@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +14,8 @@ import UpdatedApp from "./pages/UpdatedApp";
 import ShhhhApp from "./pages/ShhhhApp";
 import UserProfile from "./pages/UserProfile";
 import Admin from "./pages/Admin";
+import ShhhhcoinWallet from "./pages/ShhhhcoinWallet";
+import ShhhhcoinShop from "./pages/ShhhhcoinShop";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,8 @@ const AppRouter = () => (
               <Route path="/user/:userId" element={<UserProfile />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/hashtag/:hashtag" element={<HashtagPage />} />
+              <Route path="/shhhhcoin-wallet" element={<ShhhhcoinWallet />} />
+              <Route path="/shhhhcoin-shop" element={<ShhhhcoinShop />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

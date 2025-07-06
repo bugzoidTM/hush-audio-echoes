@@ -199,22 +199,25 @@ export const useShhhhcoin = () => {
   // Criar convite com verificações de segurança
   const createInvite = async (): Promise<string | null> => {
     if (!user) {
-      toast.error('Você precisa estar logado para criar convites');
+      toast.error('Usuário não logado');
       return null;
     }
 
-    // Verificar se pode criar convite
-    const { can, reason } = await canCreateInvite();
-    if (!can) {
-      toast.error(reason || 'Não é possível criar convite no momento');
-      return null;
-    }
-    
     try {
+      // Verificar se pode criar convite
+      const { can, reason } = await canCreateInvite();
+      if (!can) {
+        toast.error(reason || 'Não é possível criar convite');
+        return null;
+      }
+
       // Obter informações do usuário para detecção de fraude
       const userInfo = await getUserInfo();
       
+      // Gerar código único
       const inviteCode = generateInviteCode();
+      
+      // Criar convite
       const { data, error } = await supabase
         .from('referral_invites')
         .insert({
@@ -224,106 +227,77 @@ export const useShhhhcoin = () => {
           ip_address: userInfo.ip_address,
           user_agent: userInfo.user_agent,
           country_code: userInfo.country_code,
-          city: userInfo.city,
+          city: userInfo.city
         })
         .select()
         .single();
-      
+
       if (error) throw error;
-      
-      await fetchInvites();
-      toast.success('Convite criado com sucesso!');
-      
+
+      toast.success('Código de convite criado com sucesso!');
+      await fetchInvites(); // Atualizar lista
       return inviteCode;
     } catch (err: any) {
       console.error('Erro ao criar convite:', err);
-      if (err.message.includes('duplicate key')) {
-        toast.error('Código já existe, tente novamente');
-      } else {
-        toast.error('Erro ao criar convite');
-      }
+      toast.error('Erro ao criar convite');
       return null;
     }
   };
 
-  // Validar e processar uso de convite
+  // Validar código de convite
   const validateInviteCode = async (inviteCode: string): Promise<{ valid: boolean; invite?: any; reason?: string }> => {
     try {
-      const { data: invite, error } = await supabase
+      const { data, error } = await supabase
         .from('referral_invites')
         .select('*')
-        .eq('invite_code', inviteCode.toUpperCase())
+        .eq('invite_code', inviteCode)
         .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString())
         .single();
-      
-      if (error || !invite) {
-        return { valid: false, reason: 'Código de convite inválido ou expirado' };
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { valid: false, reason: 'Código de convite não encontrado ou expirado' };
+        }
+        throw error;
       }
 
-      // Verificar se não expirou
-      if (new Date(invite.expires_at) < new Date()) {
-        return { valid: false, reason: 'Código de convite expirado' };
-      }
-
-      // Verificar se o usuário não está tentando usar seu próprio convite
-      if (user && invite.inviter_id === user.id) {
-        return { valid: false, reason: 'Você não pode usar seu próprio convite' };
-      }
-
-      return { valid: true, invite };
+      return { valid: true, invite: data };
     } catch (err: any) {
       console.error('Erro ao validar convite:', err);
       return { valid: false, reason: 'Erro ao validar convite' };
     }
   };
 
-  // Aplicar convite durante o registro
+  // Aplicar código de convite
   const applyInviteCode = async (inviteCode: string, newUserId: string): Promise<boolean> => {
     try {
-      const { valid, invite, reason } = await validateInviteCode(inviteCode);
+      const { valid, invite } = await validateInviteCode(inviteCode);
       
-      if (!valid) {
-        toast.error(reason || 'Convite inválido');
+      if (!valid) return false;
+
+      // Verificar se o usuário não está tentando usar seu próprio convite
+      if (invite.inviter_id === newUserId) {
+        toast.error('Não é possível usar seu próprio código de convite');
         return false;
       }
 
-      // Obter informações do usuário para log de segurança
-      const userInfo = await getUserInfo();
-
-      // Marcar convite como usado
-      const { error: updateError } = await supabase
+      // Atualizar convite com o novo usuário
+      const { error } = await supabase
         .from('referral_invites')
-        .update({ 
+        .update({
           invited_user_id: newUserId,
-          // Note: status ainda será 'pending' até o primeiro post
+          used_at: new Date().toISOString()
         })
         .eq('id', invite.id);
 
-      if (updateError) throw updateError;
+      if (error) throw error;
 
-      // Log de segurança
-      await supabase
-        .from('fraud_detection_logs')
-        .insert({
-          user_id: newUserId,
-          invite_id: invite.id,
-          ip_address: userInfo.ip_address,
-          user_agent: userInfo.user_agent,
-          event_type: 'invite_applied',
-          risk_score: 0,
-          is_blocked: false,
-          metadata: {
-            country_code: userInfo.country_code,
-            city: userInfo.city,
-            inviter_id: invite.inviter_id
-          }
-        });
-
-      toast.success('Convite aplicado! Você receberá os pontos quando postar seu primeiro áudio.');
+      toast.success('Código de convite aplicado! Você receberá a recompensa quando postar seu primeiro áudio.');
       return true;
     } catch (err: any) {
       console.error('Erro ao aplicar convite:', err);
-      toast.error('Erro ao processar convite');
+      toast.error('Erro ao aplicar código de convite');
       return false;
     }
   };
@@ -331,46 +305,63 @@ export const useShhhhcoin = () => {
   // Comprar produto
   const purchaseProduct = async (productId: string): Promise<boolean> => {
     if (!user || !wallet) {
-      toast.error('Você precisa estar logado');
+      toast.error('Usuário não logado ou carteira não encontrada');
       return false;
     }
-    
-    const product = products.find(p => p.id === productId);
-    if (!product) {
-      toast.error('Produto não encontrado');
-      return false;
-    }
-    
-    if (wallet.balance < product.price) {
-      toast.error('Saldo insuficiente');
-      return false;
-    }
-    
+
     try {
-      // Primeiro, debitar da carteira usando a função SQL
-      const { error: debitError } = await supabase.rpc('spend_shhhhcoins', {
+      const product = products.find(p => p.id === productId);
+      if (!product) {
+        toast.error('Produto não encontrado');
+        return false;
+      }
+
+      if (wallet.balance < product.price) {
+        toast.error('Saldo insuficiente');
+        return false;
+      }
+
+      // Verificar se produto já foi comprado (para produtos permanentes)
+      const existingPurchase = purchases.find(p => 
+        p.product_id === productId && 
+        p.status === 'completed' &&
+        (!p.expires_at || new Date(p.expires_at) > new Date())
+      );
+
+      if (existingPurchase) {
+        toast.error('Você já possui este produto');
+        return false;
+      }
+
+      // Usar a função spend_shhhhcoins do banco
+      const { data, error } = await supabase.rpc('spend_shhhhcoins', {
         p_user_id: user.id,
         p_amount: product.price,
         p_description: `Compra: ${product.name}`,
         p_reference_id: productId,
-        p_reference_type: 'purchase'
+        p_reference_type: 'product_purchase'
       });
-      
-      if (debitError) throw debitError;
-      
+
+      if (error) throw error;
+
       // Criar registro de compra
+      const expiresAt = product.duration_days 
+        ? new Date(Date.now() + product.duration_days * 24 * 60 * 60 * 1000)
+        : null;
+
       const { error: purchaseError } = await supabase
         .from('shhhhcoin_purchases')
         .insert({
           user_id: user.id,
           product_id: productId,
+          transaction_id: data,
           amount_paid: product.price,
-          expires_at: product.duration_days ? 
-            new Date(Date.now() + product.duration_days * 24 * 60 * 60 * 1000).toISOString() :
-            null
+          expires_at: expiresAt
         });
-      
+
       if (purchaseError) throw purchaseError;
+
+      toast.success(`${product.name} comprado com sucesso!`);
       
       // Atualizar dados
       await Promise.all([
@@ -378,17 +369,11 @@ export const useShhhhcoin = () => {
         fetchTransactions(),
         fetchPurchases()
       ]);
-      
-      toast.success(`${product.name} comprado com sucesso!`);
+
       return true;
     } catch (err: any) {
       console.error('Erro ao comprar produto:', err);
-      
-      if (err.message.includes('Insufficient balance')) {
-        toast.error('Saldo insuficiente');
-      } else {
-        toast.error('Erro ao processar compra');
-      }
+      toast.error('Erro ao processar compra');
       return false;
     }
   };
@@ -466,4 +451,4 @@ export const useShhhhcoin = () => {
       }
     }
   };
-};
+}; 

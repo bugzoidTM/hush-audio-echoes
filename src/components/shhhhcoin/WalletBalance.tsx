@@ -179,4 +179,4 @@ const WalletBalance = ({ compact = false, showActions = true }: WalletBalancePro
   );
 };
 
-export default WalletBalance;
+export default WalletBalance; 

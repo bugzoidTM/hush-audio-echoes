@@ -19,8 +19,9 @@ api_url = "https://supabase.nutef.com"
 
 [auth]
 enabled = true
-site_url = "https://seu-dominio.com"
-additional_redirect_urls = ["http://localhost:3000", "http://localhost:5173"]
+site_url = "https://supabase.nutef.com"
+additional_redirect_urls = ["http://localhost:3000", "http://localhost:5173", "https://supabase.nutef.com"]
 jwt_expiry = 3600
 enable_signup = true
+enable_confirmations = false
 jwt_secret = "0c0d73e9cf23a10dc0063c8f916943893272f3c4"

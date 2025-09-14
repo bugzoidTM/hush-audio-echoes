@@ -14,9 +14,10 @@ interface SidebarNavigationProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
   onCreateClick: () => void;
+  onWalletClick?: () => void;
 }
 
-const SidebarNavigation = ({ activeSection, onSectionChange, onCreateClick }: SidebarNavigationProps) => {
+const SidebarNavigation = ({ activeSection, onSectionChange, onCreateClick, onWalletClick }: SidebarNavigationProps) => {
   return (
     <nav className="space-y-4">
       <Button 
@@ -66,8 +67,8 @@ const SidebarNavigation = ({ activeSection, onSectionChange, onCreateClick }: Si
       
       <Button 
         variant="ghost" 
-        className={`w-full justify-start ${activeSection === 'wallet' ? 'font-semibold' : ''}`}
-        onClick={() => onSectionChange('wallet')}
+        className="w-full justify-start"
+        onClick={onWalletClick || (() => onSectionChange('wallet'))}
       >
         <Wallet className="w-6 h-6 mr-3" />
         Carteira

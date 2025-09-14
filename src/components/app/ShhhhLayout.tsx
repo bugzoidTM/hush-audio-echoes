@@ -2,6 +2,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ interface ShhhhLayoutProps {
 
 const ShhhhLayout = ({ children, onSectionChange }: ShhhhLayoutProps) => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -52,6 +54,13 @@ const ShhhhLayout = ({ children, onSectionChange }: ShhhhLayoutProps) => {
     }
   };
 
+  const handleWalletNavigation = () => {
+    navigate('/shhhhcoin-wallet');
+    if (isMobile) {
+      setShowMobileSidebar(false);
+    }
+  };
+
   // Componente Sidebar compartilhado
   const SidebarContent = () => (
     <div className="p-4 md:p-6 h-full flex flex-col">
@@ -70,6 +79,7 @@ const ShhhhLayout = ({ children, onSectionChange }: ShhhhLayoutProps) => {
         <SidebarNavigation 
           activeSection={activeSection}
           onSectionChange={handleSectionChange}
+          onWalletClick={handleWalletNavigation}
           onCreateClick={() => {
             setShowRecordModal(true);
             if (isMobile) setShowMobileSidebar(false);
@@ -119,7 +129,7 @@ const ShhhhLayout = ({ children, onSectionChange }: ShhhhLayoutProps) => {
               <Button 
                 variant="ghost" 
                 size="icon"
-                onClick={() => handleSectionChange('wallet')}
+                onClick={handleWalletNavigation}
                 className="lg:hidden"
               >
                 <Wallet className="h-5 w-5" />

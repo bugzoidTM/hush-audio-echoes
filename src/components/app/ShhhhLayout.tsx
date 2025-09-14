@@ -5,7 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Wallet } from 'lucide-react';
 import RecordAudioModal from './RecordAudioModal';
 import FollowersStories from './FollowersStories';
 import SidebarNavigation from './SidebarNavigation';
@@ -113,18 +113,32 @@ const ShhhhLayout = ({ children, onSectionChange }: ShhhhLayoutProps) => {
               className="h-8 w-auto object-contain"
             />
             
-            {/* Botão de Criar Mobile */}
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => setShowRecordModal(true)}
-              className="lg:hidden"
-            >
-              <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                <div className="w-3 h-3 rounded-full bg-white"></div>
-              </div>
-              <span className="sr-only">Gravar áudio</span>
-            </Button>
+            {/* Ações Mobile */}
+            <div className="flex items-center space-x-2">
+              {/* Botão de Carteira Mobile */}
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => handleSectionChange('wallet')}
+                className="lg:hidden"
+              >
+                <Wallet className="h-5 w-5" />
+                <span className="sr-only">Carteira</span>
+              </Button>
+
+              {/* Botão de Criar Mobile */}
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setShowRecordModal(true)}
+                className="lg:hidden"
+              >
+                <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                  <div className="w-3 h-3 rounded-full bg-white"></div>
+                </div>
+                <span className="sr-only">Gravar áudio</span>
+              </Button>
+            </div>
           </div>
         </header>
       )}

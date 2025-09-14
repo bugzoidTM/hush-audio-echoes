@@ -6,7 +6,8 @@ import {
   Compass, 
   Heart, 
   PlusSquare, 
-  User
+  User,
+  Wallet
 } from 'lucide-react';
 
 interface SidebarNavigationProps {
@@ -61,6 +62,15 @@ const SidebarNavigation = ({ activeSection, onSectionChange, onCreateClick }: Si
       >
         <PlusSquare className="w-6 h-6 mr-3" />
         Criar
+      </Button>
+      
+      <Button 
+        variant="ghost" 
+        className={`w-full justify-start ${activeSection === 'wallet' ? 'font-semibold' : ''}`}
+        onClick={() => onSectionChange('wallet')}
+      >
+        <Wallet className="w-6 h-6 mr-3" />
+        Carteira
       </Button>
       
       <Button 

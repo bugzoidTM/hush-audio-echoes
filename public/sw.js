@@ -1,6 +1,6 @@
 
-const CACHE_NAME = 'shhhh-cache-v1';
-const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 horas em milissegundos
+const CACHE_NAME = 'shhhh-cache-v2'; // Incrementado para forçar limpeza
+const CACHE_EXPIRY = 1 * 60 * 1000; // 1 minuto em desenvolvimento
 
 // Arquivos que devem ser cacheados
 const STATIC_ASSETS = [

@@ -4,8 +4,8 @@ import { Mic, Clock, Users } from "lucide-react";
 
 const FeaturesSection = () => {
   return (
-    <section className="container mx-auto px-4 py-16 bg-white" aria-labelledby="features-title">
-      <h2 id="features-title" className="text-3xl font-bold text-center mb-12">
+    <section className="container mx-auto px-4 py-16 bg-white dark:bg-gray-900" aria-labelledby="features-title">
+      <h2 id="features-title" className="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white">
         Por que escolher o Shhhh?
       </h2>
       <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">

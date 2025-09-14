@@ -14,12 +14,12 @@ const HeroSection = () => {
           <span className="text-sm text-primary font-medium">Rede Social de Áudio Temporário</span>
         </div>
 
-        <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+        <h1 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
           <span className="text-primary">Shhhh</span> - Sua voz,
           <span className="text-primary"> seu tempo</span>
         </h1>
         
-        <h2 className="text-xl text-gray-600 mb-8 leading-relaxed">
+        <h2 className="text-xl text-gray-700 dark:text-gray-200 mb-8 leading-relaxed">
           Compartilhe áudios autênticos que desaparecem em 24 horas. 
           Conecte-se através da voz, participe de desafios diários e 
           descubra uma nova forma de se expressar no tempo certo.
@@ -48,18 +48,18 @@ const HeroSection = () => {
         </div>
 
         {/* Stats Preview */}
-        <div className="flex items-center justify-center space-x-8 pt-8 border-t border-gray-200">
+        <div className="flex items-center justify-center space-x-8 pt-8 border-t border-gray-200 dark:border-gray-700">
           <div className="text-center">
             <div className="text-2xl font-bold text-primary" aria-label="Duração dos áudios">24h</div>
-            <div className="text-sm text-muted-foreground">Duração</div>
+            <div className="text-sm text-gray-700 dark:text-gray-300">Duração</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-primary" aria-label="Possibilidades infinitas">∞</div>
-            <div className="text-sm text-muted-foreground">Possibilidades</div>
+            <div className="text-sm text-gray-700 dark:text-gray-300">Possibilidades</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-primary" aria-label="Conteúdo 100% autêntico">100%</div>
-            <div className="text-sm text-muted-foreground">Autêntico</div>
+            <div className="text-sm text-gray-700 dark:text-gray-300">Autêntico</div>
           </div>
         </div>
       </div>

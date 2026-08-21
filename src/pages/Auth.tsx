@@ -17,7 +17,7 @@ const Auth = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      navigate('/shhhh');
+      navigate('/app/echoes');
     }
   }, [user, navigate]);
 
@@ -89,9 +89,9 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
       <Card className="w-full max-w-md mx-4">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl gradient-text">Shhhh</CardTitle>
+          <CardTitle className="text-2xl gradient-text">shhhh</CardTitle>
           <CardDescription>
-            Entre na rede social de áudios efêmeros
+            Ouça o que ninguém conta — ou conte do seu jeito.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -136,7 +136,7 @@ const Auth = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="username">Nome de usuário</label>
+                  <label htmlFor="username">Nome da conta</label>
                   <Input
                     id="username"
                     name="username"

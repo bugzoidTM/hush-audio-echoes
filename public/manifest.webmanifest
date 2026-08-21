@@ -1,0 +1,16 @@
+{
+  "name": "shhhh — Ouça o que ninguém conta.",
+  "short_name": "shhhh",
+  "description": "Histórias, segredos e desabafos contados pela própria voz.",
+  "start_url": "/app/echoes",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

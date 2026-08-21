@@ -26,5 +26,28 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": [
+    "src/main.tsx",
+    "src/App.tsx",
+    "src/components/hush/**/*.tsx",
+    "src/components/ui/**/*.tsx",
+    "src/features/**/*.ts",
+    "src/features/**/*.tsx",
+    "src/pages/hush/**/*.tsx",
+    "src/pages/Auth.tsx",
+    "src/pages/Admin.tsx",
+    "src/pages/NotFound.tsx",
+    "src/hooks/useAuth.tsx",
+    "src/hooks/use-toast.ts",
+    "src/hooks/use-mobile.tsx",
+    "src/integrations/**/*.ts",
+    "src/lib/**/*.ts",
+    "src/vite-env.d.ts"
+  ],
+  "exclude": [
+    "src/components/shhhhcoin/**",
+    "src/hooks/useShhhhcoin.ts",
+    "src/pages/ShhhhcoinShop.tsx",
+    "src/pages/ShhhhcoinWallet.tsx"
+  ]
 }

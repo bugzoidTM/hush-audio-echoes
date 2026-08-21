@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 // Configurações para Supabase Self-hosted
-const SUPABASE_URL = "https://supabase.nutef.com";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0.zii4FynaxJNS8fGXKYKcnqiUw0DzIuLFB0MMz4ImjEE";
+export const SUPABASE_URL = "https://supabase.nutef.com";
+export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpcyI6ICJzdXBhYmFzZSIsCiAiaWF0IjogMTcxNTA1MDgwMCwKICAiZXhwIjogMTg3MjgxNzIwMAp9.zii4FynaxJNS8fGXKYKcnqiUw0DzIuLFB0MMz4ImjEE";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

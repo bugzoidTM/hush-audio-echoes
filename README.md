@@ -62,7 +62,9 @@ This project is built with:
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/3e080982-7b4c-4904-a97e-2336d185d8b0) and click on Share -> Publish.
+For the **shhhh** production deployment on the self-hosted Supabase VPS, follow the complete, security-first runbook in [`docs/PRODUCAO_VPS_SUPABASE.md`](docs/PRODUCAO_VPS_SUPABASE.md). It covers the database migration, Edge Functions, secrets, scheduled expiry cleanup, front-end deployment, smoke tests, and recovery.
+
+For the existing Lovable workflow, open [Lovable](https://lovable.dev/projects/3e080982-7b4c-4904-a97e-2336d185d8b0) and click on Share -> Publish.
 
 ## Can I connect a custom domain to my Lovable project?
 

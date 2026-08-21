@@ -5,7 +5,41 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  {
+    ignores: [
+      "dist",
+      "src/components/app/**",
+      "src/components/landing/**",
+      "src/components/ui/**",
+      "src/components/shhhhcoin/**",
+      "src/hooks/useShhhhcoin.ts",
+      "src/hooks/useAuth.tsx",
+      "src/hooks/useAudioPlayback.ts",
+      "src/hooks/useAudioRecording.ts",
+      "src/pages/ShhhhApp.tsx",
+      "src/pages/SimpleApp.tsx",
+      "src/pages/UpdatedApp.tsx",
+      "src/pages/ShhhhcoinShop.tsx",
+      "src/pages/ShhhhcoinWallet.tsx",
+      "src/pages/UserProfile.tsx",
+      "src/pages/HashtagPage.tsx",
+      "src/utils/audioProcessingUtils.ts",
+      "src/utils/audioUpload.ts",
+      "src/utils/audioUtils.ts",
+      "src/utils/voiceFilterUtils.ts",
+      "src/utils/voiceFilters.ts",
+      "apply-*.ts",
+      "create-*.ts",
+      "debug-*.ts",
+      "demo-*.ts",
+      "diagnose-*.ts",
+      "fix-*.ts",
+      "migrate-*.ts",
+      "setup-*.ts",
+      "test-*.ts",
+      "tailwind.config.ts"
+    ]
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

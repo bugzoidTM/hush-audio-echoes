@@ -26,6 +26,15 @@ serve(async (request) => {
     })
   }
 
+  // Esta Function executa remoção de Storage e atualização administrativa. Um JWT de usuário
+  // não é suficiente: somente a chave server-side pode disparar o job agendado.
+  if (request.headers.get('authorization') !== `Bearer ${serviceRoleKey}`) {
+    return new Response(JSON.stringify({ error: 'Não autorizado.' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })

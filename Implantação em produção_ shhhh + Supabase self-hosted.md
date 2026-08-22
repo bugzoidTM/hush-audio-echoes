@@ -1,5 +1,11 @@
 # Implantação em produção: shhhh + Supabase self-hosted
 
+> **Nota de execução (2026-08-22):** a instalação de produção roda o Supabase como stack do
+> **Docker Swarm**, não como projeto `docker compose`. Os comandos `docker compose …` e
+> `sh run.sh …` deste documento não se aplicam como estão. A versão executável, com os
+> comandos traduzidos e os scripts correspondentes, está em
+> [`docs/RUNBOOK-PRODUCAO-SWARM.md`](docs/RUNBOOK-PRODUCAO-SWARM.md).
+
 > **Escopo:** este procedimento aplica o commit `626bbd3` da branch `feat/hush-2-pivot` em uma instalação Supabase self-hosted acessível em `https://supabase.nutef.com`. Ele cria o núcleo de **Echoes, Voices e Communities**, publica as Edge Functions correspondentes e habilita a expiração segura de mídia.
 
 A instalação Docker do Supabase carrega Edge Functions a partir de `volumes/functions/<nome>/index.ts`; mudanças de código exigem reinício do serviço `functions`, enquanto alterações de variáveis exigem recriação do container. O procedimento abaixo segue esse fluxo oficial. [1] [2]

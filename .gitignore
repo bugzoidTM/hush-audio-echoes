@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Arquivos de ambiente (mantenha apenas os exemplos versionados)
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Segredos de implantação
+.env.functions

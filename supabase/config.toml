@@ -24,4 +24,6 @@ additional_redirect_urls = ["http://localhost:3000", "http://localhost:5173", "h
 jwt_expiry = 3600
 enable_signup = true
 enable_confirmations = false
-jwt_secret = "0c0d73e9cf23a10dc0063c8f916943893272f3c4"
+# O segredo real fica apenas no .env da stack (variável JWT_SECRET do serviço).
+# Nunca versione o valor: com ele é possível forjar um token service_role.
+jwt_secret = "env(SUPABASE_AUTH_JWT_SECRET)"

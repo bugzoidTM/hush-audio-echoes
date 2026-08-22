@@ -1,4 +1,5 @@
 import { Toaster as Sonner } from '@/components/ui/sonner'
+import { Toaster } from '@/components/ui/toaster'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { HushLayout } from '@/components/hush/HushLayout'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -30,6 +31,9 @@ export default function AppRouter() {
         <TooltipProvider>
           <AuthProvider>
             <Sonner />
+            {/* 65 chamadas de useToast() no app dependem deste Toaster: sem ele
+                nenhum aviso aparecia — nem o erro de login. */}
+            <Toaster />
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<LandingPage />} />

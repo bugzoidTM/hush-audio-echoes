@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { authErrorMessage } from '@/features/auth/authMessages';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 
@@ -33,8 +34,8 @@ const Auth = () => {
 
     if (error) {
       toast({
-        title: "Erro no login",
-        description: error.message,
+        title: "Não foi possível entrar",
+        description: authErrorMessage(error),
         variant: "destructive",
       });
       setIsLoading(false);
@@ -71,14 +72,15 @@ const Auth = () => {
 
     if (error) {
       toast({
-        title: "Erro no cadastro",
-        description: error.message,
+        title: "Não foi possível criar a conta",
+        description: authErrorMessage(error),
         variant: "destructive",
       });
     } else {
+      // A conta já nasce ativa: não há confirmação por e-mail nesta instalação.
       toast({
-        title: "Cadastro realizado!",
-        description: "Verifique seu email para confirmar a conta.",
+        title: "Conta criada!",
+        description: "Você já está entrando no shhhh.",
       });
     }
 

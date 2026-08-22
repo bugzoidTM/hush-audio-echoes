@@ -31,3 +31,6 @@ dist-ssr
 
 # Segredos de implantação
 .env.functions
+
+# Gerado pelo `deno check` das Edge Functions
+deno.lock

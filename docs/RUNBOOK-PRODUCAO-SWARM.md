@@ -63,12 +63,33 @@ serviço, visível apenas a quem já tem acesso ao Docker do host.
 
 | Function | Autorização |
 |---|---|
+| `main` | roteador do edge-runtime (limites de memória/CPU/tempo do worker) |
 | `publish-echo`, `discovery-feed`, `generate-echo-hook`, `transcribe-audio` | sessão de usuário |
 | `moderate-echo` | usuário com papel administrativo |
 | `cleanup-expired-audios` | somente a chave server-side (service role) |
 
 Cada Function revalida a sessão internamente, então o gate do roteador
 (`VERIFY_JWT`) é defesa em profundidade, não a única barreira.
+
+### Serviços de IA: nada de OpenAI
+
+O PRD previa uma `OPENAI_API_KEY`. Em vez dela, as duas Functions que usariam a
+OpenAI falam com serviços gratuitos que já rodam na VPS:
+
+| Function | Serviço | Variáveis |
+|---|---|---|
+| `transcribe-audio` | `whisper-stt` (faster-whisper, CPU) | `STT_URL` (padrão `http://whisper-stt:8000`), `STT_TIMEOUT_MS` |
+| `generate-echo-hook` | `chatgptproxy` (API compatível com a da OpenAI) | `HOOK_API_URL`, `HOOK_API_KEY`, `HOOK_MODEL`, `HOOK_TIMEOUT_MS` |
+
+Nenhum áudio sai da infraestrutura. Os dois proxies de LLM da VPS (`chatgptproxy`
+e `qwenproxy`) dirigem um navegador e levam de 45 s a alguns minutos, enquanto o
+Kong corta a requisição em 60 s — por isso a sugestão de chamada tem teto de
+50 s, cai num resumo local calculado a partir da transcrição e o cliente já
+mostra esse resumo na hora, trocando pelo texto do modelo só se ele chegar.
+
+Os limites do worker ficam em `supabase/functions/main/index.ts` (memória, tempo
+de parede e tempo de CPU). Os padrões do pacote self-hosted — 150 MB, 60 s e o
+limite de CPU implícito — matavam a transcrição com `WorkerRequestCancelled`.
 
 ## 5. Expiração periódica de mídia
 

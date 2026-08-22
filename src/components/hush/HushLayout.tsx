@@ -62,7 +62,7 @@ export function HushLayout() {
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 dark:bg-slate-950 dark:text-slate-50">
       <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-4 sm:px-6">
-          <NavLink to="/app/echoes" className="text-xl font-black tracking-[-0.08em] text-slate-950 dark:text-white" aria-label="shhhh, Echoes">shhhh<span className="text-indigo-600">.</span></NavLink>
+          <NavLink to="/app/echoes" className="flex items-center gap-2 text-xl font-black tracking-[-0.08em] text-slate-950 dark:text-white" aria-label="shhhh, Echoes"><img src="/lovable-uploads/a384c699-fcd9-4ac6-bcf9-612e01bab15d.png" alt="" aria-hidden="true" width={32} height={32} className="size-8 rounded-lg" />shhhh<span className="text-indigo-600">.</span></NavLink>
           <div className="flex items-center gap-1"><Button variant="ghost" size="icon" className="rounded-xl" aria-label="Buscar" onClick={() => navigate('/app/search')}><Search className="size-5" /></Button><Button variant="ghost" size="icon" className="rounded-xl" aria-label="Notificações" onClick={() => navigate('/app/notifications')}><Bell className="size-5" /></Button></div>
         </div>
       </header>

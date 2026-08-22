@@ -84,18 +84,21 @@ export async function getMyVoicesFeed(cursor?: string | null): Promise<PublicEch
 
 export async function transcribeFinalAudio(audio: Blob): Promise<string> {
   const form = new FormData()
-  form.set('audio', audio, 'echo-audio.webm')
+  // O nome precisa combinar com o tipo real: o serviço de transcrição escolhe o
+  // decodificador pela extensão/mimetype recebidos.
+  const extension = audio.type.includes('wav') ? 'wav' : audio.type.includes('ogg') ? 'ogg' : audio.type.includes('mpeg') ? 'mp3' : 'webm'
+  form.set('audio', audio, `echo-audio.${extension}`)
   const result = await requestJson<{ text: string }>('/functions/v1/transcribe-audio', { method: 'POST', body: form })
   return result.text
 }
 
-export async function generateEchoHook(transcription: string): Promise<string> {
-  const result = await requestJson<{ hook: string }>('/functions/v1/generate-echo-hook', {
+export async function generateEchoHook(transcription: string): Promise<{ hook: string; source: 'llm' | 'local' }> {
+  const result = await requestJson<{ hook: string; source?: 'llm' | 'local' }>('/functions/v1/generate-echo-hook', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ transcription }),
   })
-  return result.hook
+  return { hook: result.hook, source: result.source ?? 'local' }
 }
 
 export async function publishEcho(draft: EchoDraft): Promise<{ id: string; moderation_status: string }> {

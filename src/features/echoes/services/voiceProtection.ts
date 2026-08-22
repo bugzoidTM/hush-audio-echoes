@@ -69,12 +69,24 @@ function applyFormantColor(samples: Float32Array, sampleRate: number, settings: 
   return output
 }
 
+const TARGET_PEAK = 0.92
+// Teto de ganho: sem ele, uma gravação praticamente muda viraria só chiado alto.
+const MAX_GAIN = 12
+const SILENCE_FLOOR = 0.005
+
+/**
+ * Leva o pico para perto de 0 dBFS, atenuando o que estourou e **também**
+ * levantando gravação baixa. Só atenuar deixava Echoes quase inaudíveis no
+ * player e sem volume suficiente para o detector de fala da transcrição.
+ */
 function normalizeChannels(channels: Float32Array[]): Float32Array[] {
   const peak = channels.reduce((largest, channel) => {
     const channelPeak = channel.reduce((value, sample) => Math.max(value, Math.abs(sample)), 0)
     return Math.max(largest, channelPeak)
   }, 0)
-  const gain = peak > 0.92 ? 0.92 / peak : 1
+  if (peak <= SILENCE_FLOOR) return channels
+  const gain = Math.min(TARGET_PEAK / peak, MAX_GAIN)
+  if (Math.abs(gain - 1) < 0.01) return channels
   return channels.map((channel) => channel.map((sample) => sample * gain))
 }
 
@@ -112,6 +124,39 @@ function writeWaveFile(channels: Float32Array[], sampleRate: number): Blob {
     }
   }
   return new Blob([buffer], { type: 'audio/wav' })
+}
+
+/**
+ * Prepara o áudio para a transcrição: mono, 16 kHz e com o pico normalizado.
+ * É o formato que o Whisper usa internamente, então o arquivo enviado fica
+ * pequeno, e o ganho evita que uma gravação baixa volte transcrição vazia —
+ * o detector de fala simplesmente não a reconhece como voz.
+ * Qualquer falha devolve o áudio original: transcrever é opcional.
+ */
+export async function prepareAudioForTranscription(input: Blob): Promise<Blob> {
+  const AudioContextConstructor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  const OfflineAudioContextConstructor = window.OfflineAudioContext ?? (window as Window & { webkitOfflineAudioContext?: typeof OfflineAudioContext }).webkitOfflineAudioContext
+  if (!input.size || !AudioContextConstructor || !OfflineAudioContextConstructor) return input
+
+  const context = new AudioContextConstructor()
+  try {
+    const decoded = await context.decodeAudioData(await input.arrayBuffer())
+    const targetRate = 16000
+    const frames = Math.ceil(decoded.duration * targetRate)
+    if (!frames) return input
+
+    const offline = new OfflineAudioContextConstructor(1, frames, targetRate)
+    const source = offline.createBufferSource()
+    source.buffer = decoded
+    source.connect(offline.destination)
+    source.start()
+    const rendered = await offline.startRendering()
+    return writeWaveFile(normalizeChannels([rendered.getChannelData(0)]), targetRate)
+  } catch {
+    return input
+  } finally {
+    await context.close()
+  }
 }
 
 export class LocalDspVoiceProtectionProvider implements VoiceProtectionProvider {

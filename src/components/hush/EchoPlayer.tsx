@@ -17,6 +17,8 @@ export function EchoPlayer({ echoId, audioUrl, duration, onStarted, active = tru
   const milestones = useRef(new Set<number>())
   const [playing, setPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
+  // Sem isto o play falho ficava mudo: o clique não fazia nada visível.
+  const [playbackError, setPlaybackError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!active && audioRef.current && !audioRef.current.paused) {
@@ -37,6 +39,7 @@ export function EchoPlayer({ echoId, audioUrl, duration, onStarted, active = tru
     if (!audio) return
     if (audio.paused) {
       try {
+        setPlaybackError(null)
         await audio.play()
         onStarted?.()
         setPlaying(true)
@@ -44,6 +47,7 @@ export function EchoPlayer({ echoId, audioUrl, duration, onStarted, active = tru
         else void trackEchoEvent(echoId, 'play_start', 0)
       } catch {
         setPlaying(false)
+        setPlaybackError('Não foi possível reproduzir este Echo. O áudio pode ter expirado.')
       }
       return
     }
@@ -86,6 +90,10 @@ export function EchoPlayer({ echoId, audioUrl, duration, onStarted, active = tru
         src={audioUrl}
         onTimeUpdate={onTimeUpdate}
         onPause={() => setPlaying(false)}
+        onError={() => {
+          setPlaying(false)
+          setPlaybackError('O áudio deste Echo não está disponível.')
+        }}
         onEnded={() => {
           setPlaying(false)
           setCurrentTime(effectiveDuration)
@@ -124,6 +132,7 @@ export function EchoPlayer({ echoId, audioUrl, duration, onStarted, active = tru
           </Button>
         )}
       </div>
+      {playbackError && <p role="status" className="text-xs font-medium text-rose-600 dark:text-rose-400">{playbackError}</p>}
     </div>
   )
 }

@@ -221,7 +221,11 @@ serve(async (request) => {
     })
   }
 
-  const { data: publicUrl } = admin.storage.from('echo-audio').getPublicUrl(storagePath)
+  // getPublicUrl monta a URL a partir de SUPABASE_URL, que dentro da stack é o
+  // endereço interno do Kong (http://kong:8000) e não resolve no navegador.
+  // O endereço público vem de SUPABASE_PUBLIC_URL.
+  const publicBase = (Deno.env.get('SUPABASE_PUBLIC_URL') ?? supabaseUrl).replace(/\/+$/, '')
+  const audioUrl = `${publicBase}/storage/v1/object/public/echo-audio/${storagePath}`
   const moderationStatus = automatedModeration(transcription)
   const { data: echo, error: insertError } = await admin
     .from('audio_posts')
@@ -231,7 +235,7 @@ serve(async (request) => {
       voice_id: validatedVoiceId,
       identity_mode: identityMode as IdentityMode,
       category_id: categoryId,
-      audio_url: publicUrl.publicUrl,
+      audio_url: audioUrl,
       storage_path: storagePath,
       parent_id: typeof parentEchoId === 'string' ? parentEchoId : null,
       duration: Math.round(duration),

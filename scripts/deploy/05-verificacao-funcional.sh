@@ -81,6 +81,18 @@ else
   pass "payload público sem identificador de conta"
 fi
 
+# Regressão conhecida: publish-echo já gravou audio_url com o host interno
+# (http://kong:8000), que não resolve no navegador — o play não fazia nada.
+AUDIO_URL="$(jq -r '.audio_url // ""' <<<"$ITEM")"
+case "$AUDIO_URL" in
+  "$PUBLIC_SUPABASE_URL"/storage/v1/object/public/echo-audio/*)
+    MEDIA_OK="$(curl -s -o /dev/null -w '%{http_code}' "$AUDIO_URL")"
+    [ "$MEDIA_OK" = "200" ] && pass "áudio publicado acessível pela URL pública" \
+      || fail "URL pública do áudio respondeu HTTP $MEDIA_OK"
+    ;;
+  *) fail "audio_url não é uma URL pública: $AUDIO_URL" ;;
+esac
+
 PUBLIC_ECHO="$(api -X POST "$PUBLIC_SUPABASE_URL/rest/v1/rpc/get_public_echo" \
   -H 'Content-Type: application/json' -d "$(jq -nc --arg id "$ANON_ID" '{p_echo_id:$id}')")"
 jq -e --arg id "$ANON_ID" '.[0].id == $id and .[0].public_identity == "Anônimo"' >/dev/null <<<"$PUBLIC_ECHO" \

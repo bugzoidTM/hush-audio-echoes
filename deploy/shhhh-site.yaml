@@ -20,14 +20,14 @@ services:
       labels:
         - traefik.enable=true
         - traefik.docker.network=Nutef
-        - traefik.http.routers.shhhh.rule=Host(`shhhh.me`) || Host(`www.shhhh.me`)
-        - traefik.http.routers.shhhh.entrypoints=websecure
-        - traefik.http.routers.shhhh.priority=10
-        - traefik.http.routers.shhhh.tls=true
-        - traefik.http.routers.shhhh.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.shhhh.service=shhhh
-        - traefik.http.services.shhhh.loadbalancer.server.port=8080
-        - traefik.http.services.shhhh.loadbalancer.passHostHeader=true
+        - traefik.http.routers.shhhhme.rule=Host(`shhhh.me`) || Host(`www.shhhh.me`)
+        - traefik.http.routers.shhhhme.entrypoints=websecure
+        - traefik.http.routers.shhhhme.priority=10
+        - traefik.http.routers.shhhhme.tls=true
+        - traefik.http.routers.shhhhme.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.shhhhme.service=shhhhme
+        - traefik.http.services.shhhhme.loadbalancer.server.port=8080
+        - traefik.http.services.shhhhme.loadbalancer.passHostHeader=true
 
 networks:
   Nutef:

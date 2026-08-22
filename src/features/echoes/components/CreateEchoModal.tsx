@@ -11,7 +11,8 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { createVoice, generateEchoHook, getCategories, getMyVoice, publishEcho, transcribeFinalAudio } from '@/features/echoes/services/hushApi'
 import { canPublishWithProtection, isDiscoveryDurationValid } from '@/features/echoes/services/discoveryPolicy'
-import { voiceProtectionProvider } from '@/features/echoes/services/voiceProtection'
+import { localHookFromTranscription } from '@/features/echoes/services/hookText'
+import { prepareAudioForTranscription, voiceProtectionProvider } from '@/features/echoes/services/voiceProtection'
 import type { EchoCategory, EchoExpiration, IdentityMode, VoiceProtectionPreset } from '@/features/echoes/types'
 import { useAudioRecorder } from '@/hooks/useAudioRecorder'
 import { useToast } from '@/hooks/use-toast'
@@ -113,10 +114,22 @@ export function CreateEchoModal({ open, onOpenChange, replyToId }: CreateEchoMod
     }
     setTranscribing(true)
     try {
-      const text = await transcribeFinalAudio(audio)
+      const text = await transcribeFinalAudio(await prepareAudioForTranscription(audio))
       setTranscription(text)
-      if (!title.trim() && text) setTitle(await generateEchoHook(text))
       toast({ title: 'Transcrição pronta', description: 'Você pode revisar o texto e a chamada antes de publicar.' })
+      if (text) {
+        // Chamada imediata a partir da própria transcrição.
+        const provisional = localHookFromTranscription(text)
+        setTitle((current) => (current.trim() ? current : provisional))
+        // O modelo gratuito da VPS leva dezenas de segundos: refina em segundo
+        // plano e só substitui se a pessoa não tiver escrito nada por conta.
+        void generateEchoHook(text)
+          .then(({ hook, source }) => {
+            if (source !== 'llm' || !hook) return
+            setTitle((current) => (current.trim() && current !== provisional ? current : hook))
+          })
+          .catch(() => undefined)
+      }
     } catch (error) {
       toast({ title: 'Transcrição indisponível', description: error instanceof Error ? error.message : 'Você ainda pode publicar sem transcrição.', variant: 'destructive' })
     } finally {

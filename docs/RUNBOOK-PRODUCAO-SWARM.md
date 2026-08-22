@@ -82,6 +82,32 @@ sudo crontab -l | { cat; echo '*/15 * * * * /usr/local/lib/shhhh/cleanup-expired
 O script lê a chave server-side do próprio serviço do Swarm, em memória; o
 crontab não contém credencial alguma.
 
+## 5.1 Correções de infraestrutura necessárias uma única vez
+
+Encontradas ao executar este runbook em 2026-08-22; já aplicadas em produção.
+
+```bash
+# Storage falhava em todo upload com 500 porque o serviço apontava para o alias
+# ambíguo `db` (que resolve para cortex_db na rede Nutef).
+scripts/deploy/fix-storage-db-host.sh
+```
+
+Configuração do GoTrue (`supabase_auth`), necessária para o cadastro do app
+funcionar — a instância vinha com registro público desligado e sem SMTP:
+
+```bash
+docker service update \
+  --env-add GOTRUE_DISABLE_SIGNUP=false \
+  --env-add GOTRUE_MAILER_AUTOCONFIRM=true \
+  --env-add GOTRUE_SITE_URL=https://shhhh.me \
+  --env-add 'GOTRUE_URI_ALLOW_LIST=https://shhhh.me,https://shhhh.me/*,https://www.shhhh.me,https://www.shhhh.me/*,http://localhost:5173,http://localhost:5173/*' \
+  supabase_auth
+```
+
+`GOTRUE_MAILER_AUTOCONFIRM=true` acompanha `enable_confirmations = false` do
+`supabase/config.toml`: sem SMTP configurado, exigir confirmação por e-mail
+deixaria toda conta nova sem conseguir entrar.
+
 ## 6. Front-end
 
 O cliente lê `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (veja
@@ -94,19 +120,38 @@ npm ci
 npm run typecheck && npm run lint && npm test && npm run build
 ```
 
-Publique o conteúdo de `dist/` no mecanismo de site em uso.
+Publicação na VPS (stack `shhhh-site`, nginx atrás do Traefik):
+
+```bash
+rsync -a --delete dist/ /root/shhhh-site/public/
+docker stack deploy -c /root/shhhh-site.yaml shhhh-site
+```
+
+As cópias versionadas do stack e do nginx estão em `deploy/shhhh-site.yaml` e
+`deploy/nginx.conf`; na VPS elas vivem em `/root/shhhh-site.yaml` e
+`/root/shhhh-site/nginx.conf`.
+
+O `nginx.conf` faz fallback de SPA (`/app/echoes`, `/e/:id`, `/v/:handle` caem
+no `index.html`) e cacheia `/assets/` por um ano — os nomes têm hash.
+O roteador do Traefik responde por `shhhh.me` e `www.shhhh.me`; o certificado
+Let's Encrypt só é emitido depois que o DNS do domínio apontar para a VPS.
 
 ## 7. Smoke tests
 
 ```bash
 scripts/deploy/04-smoke-test.sh
+scripts/deploy/05-verificacao-funcional.sh
 ```
 
 Cobre o que dá para verificar sem sessão: roteamento de Functions, leitura
 pública de `categories`, recusa de `discovery-feed`/`moderate-echo` sem sessão,
 recusa do cleanup com chave anon e execução do cleanup com a chave correta.
-Os fluxos de produto (onboarding, Echo anônimo, Protect My Voice, comunidade,
-denúncia/bloqueio) continuam sendo verificação manual, conforme a tabela do PRD.
+`05-verificacao-funcional.sh` vai além: cria uma conta descartável, publica um
+Echo anônimo e um Echo com Voice, confere que o payload público não expõe
+identidade nem identificador de conta, valida `/e/:id` e `/v/:handle`, força a
+expiração de um Echo e confirma que a mídia sumiu do Storage — removendo tudo
+ao final. Continuam manuais: onboarding, Protect My Voice, comunidades e o
+fluxo de denúncia/bloqueio pela interface.
 
 ## 8. Rollback
 

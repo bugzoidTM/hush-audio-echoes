@@ -447,7 +447,8 @@ ranked AS (
 )
 SELECT
   id,
-  CASE WHEN identity_mode = 'anonymous' THEN 'Anônimo' ELSE COALESCE(voice_display_name, 'Voice') END,
+  -- display_name vem do JOIN com voices; voice_display_name é só o nome da coluna de saída.
+  CASE WHEN identity_mode = 'anonymous' THEN 'Anônimo' ELSE COALESCE(display_name, 'Voice') END,
   CASE WHEN identity_mode = 'anonymous' THEN NULL ELSE handle END,
   CASE WHEN identity_mode = 'anonymous' THEN NULL ELSE display_name END,
   CASE WHEN identity_mode = 'anonymous' THEN NULL ELSE avatar_seed END,

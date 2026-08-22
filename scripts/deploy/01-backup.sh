@@ -15,8 +15,15 @@ log "arquivo das functions -> $TGZ"
 tar -C "$SUPABASE_VOLUMES_DIR" -czf "$TGZ" functions
 
 log "verificando integridade dos artefatos"
-pg_restore --list "$DUMP" >/dev/null 2>&1 \
-  || docker exec -i "$(service_container db)" pg_restore --list /dev/stdin < "$DUMP" >/dev/null
+# pg_restore pode não existir no host; nesse caso valida-se dentro do container.
+# O formato custom não é legível por stream, então o arquivo é copiado para /tmp.
+if command -v pg_restore >/dev/null 2>&1; then
+  pg_restore --list "$DUMP" >/dev/null
+else
+  docker exec -i "$(service_container db)" sh -c \
+    'cat > /tmp/verify.dump && pg_restore --list /tmp/verify.dump >/dev/null; rc=$?; rm -f /tmp/verify.dump; exit $rc' \
+    < "$DUMP"
+fi
 tar -tzf "$TGZ" >/dev/null
 
 ls -lh "$DUMP" "$TGZ"

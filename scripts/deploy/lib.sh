@@ -26,8 +26,16 @@ service_container() {
 }
 
 # psql como superusuário dentro do container do banco.
+#
+# Nesta instalação o papel `postgres` NÃO é superusuário e não é membro de
+# `supabase_admin`, que é o dono de todas as tabelas de public — rodar a
+# migração como `postgres` falha com "must be owner of table audio_posts".
+# O pg_hba do container tem `host all all 127.0.0.1/32 trust`, então a conexão
+# pelo loopback interno autentica como supabase_admin sem senha e sem expor
+# credencial alguma fora do container.
 db_psql() {
-  docker exec -i "$(service_container db)" psql -U postgres -d postgres "$@"
+  docker exec -i "$(service_container db)" \
+    psql -h 127.0.0.1 -U "${SUPABASE_DB_ADMIN:-supabase_admin}" -d postgres "$@"
 }
 
 # Reinicia um serviço do stack. Em Swarm, --force recria a tarefa e recarrega

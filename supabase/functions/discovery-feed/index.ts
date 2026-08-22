@@ -39,6 +39,16 @@ serve(async (request) => {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
+  // O feed é exclusivo de sessão autenticada: get_discovery_feed usa auth.uid()
+  // para filtrar bloqueios e Echoes já ouvidos, e o PRD exige sessão de usuário.
+  const { data: authData } = await client.auth.getUser()
+  if (!authData.user) {
+    return new Response(JSON.stringify({ error: 'Autenticação obrigatória para carregar o feed.' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
   const url = new URL(request.url)
   const cursor = url.searchParams.get('cursor')
   const category = url.searchParams.get('category')

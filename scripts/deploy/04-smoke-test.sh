@@ -36,9 +36,12 @@ check 'cleanup com anon (deve recusar)' 401 \
   -X POST -H "apikey: $ANON_KEY" -H "Authorization: Bearer $ANON_KEY" \
   "$PUBLIC_SUPABASE_URL/functions/v1/cleanup-expired-audios" || failures=$((failures+1))
 
+# O corpo precisa ser válido: moderate-echo valida o payload antes da sessão,
+# e um corpo vazio responderia 400 sem exercitar o gate de autorização.
 check 'moderate-echo sem sessão (deve recusar)' 401 \
   -X POST -H "apikey: $ANON_KEY" -H "Authorization: Bearer $ANON_KEY" \
-  -H 'Content-Type: application/json' -d '{}' \
+  -H 'Content-Type: application/json' \
+  -d '{"echo_id":"00000000-0000-0000-0000-000000000000","decision":"approved"}' \
   "$PUBLIC_SUPABASE_URL/functions/v1/moderate-echo" || failures=$((failures+1))
 
 log "verificando expiração pelo caminho administrativo"

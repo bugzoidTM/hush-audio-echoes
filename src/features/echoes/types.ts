@@ -94,6 +94,8 @@ export interface PublicVoice {
   avatar_seed: string
   avatar_url: string | null
   status: 'active' | 'suspended' | 'deleted'
+  /** O dono autorizou a página desta Voice a aparecer em buscadores. */
+  indexable: boolean
   active_echo_count: number
   permanent_echo_count: number
   community_slug: string | null

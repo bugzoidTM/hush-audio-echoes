@@ -18,6 +18,13 @@ interface EchoCardProps {
   onAudioStarted: () => void
   onReply: (echo: PublicEcho) => void
   onFollow: (echo: PublicEcho) => void
+  /**
+   * Visitante sem conta. Ouvir é livre — é o que faz o link compartilhado
+   * funcionar. Reagir, responder e denunciar exigem conta, e aqui isso vira
+   * convite, não um erro de permissão na cara de quem acabou de chegar.
+   */
+  guest?: boolean
+  onGuestAction?: (intent: 'reagir' | 'responder' | 'denunciar' | 'seguir') => void
 }
 
 const reactions: Array<{ type: EchoReactionType; label: string; shortLabel: string }> = [
@@ -27,7 +34,7 @@ const reactions: Array<{ type: EchoReactionType; label: string; shortLabel: stri
   { type: 'helped', label: 'Me ajudou', shortLabel: 'Me ajudou' },
 ]
 
-export function EchoCard({ echo, active, onAudioStarted, onReply, onFollow }: EchoCardProps) {
+export function EchoCard({ echo, active, onAudioStarted, onReply, onFollow, guest = false, onGuestAction }: EchoCardProps) {
   const { toast } = useToast()
   const [selectedReaction, setSelectedReaction] = useState<EchoReactionType | null>(null)
   const [showTranscript, setShowTranscript] = useState(false)
@@ -36,6 +43,7 @@ export function EchoCard({ echo, active, onAudioStarted, onReply, onFollow }: Ec
   const expiresLabel = useTimeLeft(echo.expires_at)
 
   const react = async (reaction: EchoReactionType) => {
+    if (guest) return onGuestAction?.('reagir')
     setSelectedReaction(reaction)
     try {
       await setReaction(echo.id, reaction)
@@ -59,6 +67,7 @@ export function EchoCard({ echo, active, onAudioStarted, onReply, onFollow }: Ec
   }
 
   const submitReport = async () => {
+    if (guest) { setShowReport(false); return onGuestAction?.('denunciar') }
     try {
       await createReport(echo.id, reportReason)
       void trackEchoEvent(echo.id, 'report')
@@ -130,13 +139,13 @@ export function EchoCard({ echo, active, onAudioStarted, onReply, onFollow }: Ec
 
         <div className="mt-5 flex items-center justify-between gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
           <div className="flex gap-1">
-            <Button variant="ghost" size="sm" className="rounded-xl text-slate-600 dark:text-slate-300" onClick={() => onReply(echo)}>
+            <Button variant="ghost" size="sm" className="rounded-xl text-slate-600 dark:text-slate-300" onClick={() => (guest ? onGuestAction?.('responder') : onReply(echo))}>
               <MessageCircle className="mr-2 size-4" /> Responder{echo.reply_count ? ` · ${echo.reply_count}` : ''}
             </Button>
             <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => void share()} aria-label="Compartilhar Echo"><Share2 className="size-4" /></Button>
           </div>
           <div className="flex gap-1">
-            {echo.voice_handle && <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => onFollow(echo)} aria-label="Seguir Voice"><UserPlus className="size-4" /></Button>}
+            {echo.voice_handle && <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => (guest ? onGuestAction?.('seguir') : onFollow(echo))} aria-label="Seguir Voice"><UserPlus className="size-4" /></Button>}
             <Button variant="ghost" size="icon" className="rounded-xl text-slate-500" onClick={() => setShowReport(true)} aria-label="Denunciar Echo"><Flag className="size-4" /></Button>
           </div>
         </div>

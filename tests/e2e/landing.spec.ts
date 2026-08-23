@@ -4,7 +4,8 @@ test('apresenta a proposta do shhhh e CTAs principais', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveTitle(/shhhh/i)
   await expect(page.getByRole('heading', { name: 'Ouça o que ninguém conta.' })).toBeVisible()
-  await expect(page.getByRole('button', { name: /começar a ouvir/i })).toBeVisible()
+  // Visitante é convidado a OUVIR, não a se cadastrar: o conteúdo é que vende.
+  await expect(page.getByRole('button', { name: /ouvir agora, sem cadastro/i })).toBeVisible()
   await expect(page.getByRole('button', { name: /contar algo/i })).toBeVisible()
 })
 

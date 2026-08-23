@@ -1,14 +1,15 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# A landing e a prévia (/ouvir) são a porta de entrada: podem ser rastreadas.
 User-agent: *
 Allow: /
+Allow: /ouvir
+
+# Echoes individuais tocam para qualquer pessoa com o link, mas não devem ser
+# arquivados por buscadores — são desabafos, e o produto promete efemeridade.
+# O bloqueio que realmente vale é o cabeçalho X-Robots-Tag servido pelo nginx
+# em /e/; esta linha evita o rastreamento antes disso.
+Disallow: /e/
+
+# Área autenticada: nada a rastrear.
+Disallow: /app/
+Disallow: /admin
+Disallow: /auth

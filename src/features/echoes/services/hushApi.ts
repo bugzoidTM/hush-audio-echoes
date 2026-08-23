@@ -80,6 +80,30 @@ export async function getDiscoveryFeed(
   return response
 }
 
+/**
+ * Prévia para quem ainda não tem conta. Diferente do Discovery: no máximo 3 por
+ * chamada, sem ranking personalizado, servida só a partir dos Echoes mais
+ * recentes. É funil, não fronteira — o bucket é público de propósito, para que
+ * um link compartilhado toque no WhatsApp de quem nunca ouviu falar do shhhh.
+ */
+export async function getPublicPreviewFeed(excludeIds: string[] = []): Promise<PublicEcho[]> {
+  const rows = await requestJson<PublicEcho[]>('/rest/v1/rpc/get_public_preview_feed', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_exclude_ids: excludeIds.slice(-50), p_limit: 3 }),
+  })
+  assertAnonymousPayloadSafety(rows)
+  return rows
+}
+
+export async function setVoiceIndexable(voiceId: string, indexable: boolean): Promise<void> {
+  await requestJson('/rest/v1/rpc/set_voice_indexable', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_voice_id: voiceId, p_indexable: indexable }),
+  })
+}
+
 export async function getFeatureFlags(): Promise<FeatureFlags> {
   const rows = await requestJson<Array<{ key: string; enabled: boolean }>>('/rest/v1/feature_flags?select=key,enabled')
   return Object.fromEntries(rows.map((row) => [row.key, row.enabled])) as FeatureFlags
@@ -194,11 +218,11 @@ export async function publishEcho(draft: EchoDraft): Promise<{ id: string; moder
   })
 }
 
-export async function getMyVoice(): Promise<{ id: string; handle: string; display_name: string; avatar_seed: string; bio: string | null } | null> {
+export async function getMyVoice(): Promise<{ id: string; handle: string; display_name: string; avatar_seed: string; bio: string | null; indexable: boolean } | null> {
   const { data: userData } = await supabase.auth.getUser()
   if (!userData.user) return null
-  const voices = await requestJson<Array<{ id: string; handle: string; display_name: string; avatar_seed: string; bio: string | null }>>(
-    `/rest/v1/voices?select=id,handle,display_name,avatar_seed,bio&owner_user_id=eq.${encodeURIComponent(userData.user.id)}&limit=1`,
+  const voices = await requestJson<Array<{ id: string; handle: string; display_name: string; avatar_seed: string; bio: string | null; indexable: boolean }>>(
+    `/rest/v1/voices?select=id,handle,display_name,avatar_seed,bio,indexable&owner_user_id=eq.${encodeURIComponent(userData.user.id)}&limit=1`,
   )
   return voices[0] ?? null
 }

@@ -234,6 +234,46 @@ Para mudar os limites: `DISCOVERY_DURATION` em
 gravação), as constantes no topo de `supabase/functions/publish-echo/index.ts`
 e `SHHHH_MAX_DURATION_SECONDS` no worker — os três precisam concordar.
 
+## 5.1.3 O que é público e o que exige conta
+
+| | Sem conta | Com conta |
+| --- | --- | --- |
+| Echo por link (`/e/:id`) | ✅ ouve inteiro | ✅ |
+| Prévia (`/ouvir`) | ✅ até 3 Echoes | — (redireciona ao Discovery) |
+| Página da Voice (`/v/:handle`) | ✅ ouve | ✅ |
+| Discovery infinito | ❌ `get_discovery_feed` negado ao `anon` | ✅ |
+| Reagir, responder, denunciar, seguir, publicar | ❌ vira convite de cadastro | ✅ |
+
+A decisão de produto é **provar o valor antes de pedir compromisso**: o Echo
+compartilhado é o principal canal de aquisição, e um muro de cadastro na frente
+dele faz a pessoa fechar a aba.
+
+O gate está no **servidor**, não na tela. Isso importa porque a chave `anon` vai
+dentro do bundle: até 2026-08-24 o `anon` tinha EXECUTE em `get_discovery_feed`,
+e o 401 da Edge Function não impedia nada — bastava chamar a RPC direto no
+PostgREST para ter o feed inteiro sem conta.
+
+A prévia (`get_public_preview_feed`) é deliberadamente pequena: no máximo 3 por
+chamada, sem ranking personalizado, servida só a partir dos 30 Echoes mais
+recentes, para não virar porta de varredura do catálogo. O contador de 3 vive no
+`localStorage` e é funil, não fronteira — o bucket `echo-audio` é público por
+decisão de produto, então quem insistir ouve mais. Trancar exigiria bucket
+privado com URL assinada, o que quebraria justamente o compartilhamento.
+
+**Público ≠ indexado.** O nginx serve `X-Robots-Tag` pela URL pedida (um `map`,
+porque numa SPA o `try_files` manda tudo para `index.html` e um `add_header` em
+location específica se perderia no caminho):
+
+| Rota | Cabeçalho |
+| --- | --- |
+| `/e/:id` | `noindex, noarchive, nosnippet` — desabafo não fica arquivado em buscador |
+| `/app/`, `/admin`, `/auth` | `noindex, nofollow` |
+| `/`, `/ouvir`, `/v/:handle` | nenhum (indexável) |
+
+A página da Voice é pseudônima e indexável só se o dono ligar
+`voices.indexable` (Configurações → "Aparecer fora do shhhh"); o padrão é
+desligado, e a meta tag da SPA reflete a escolha.
+
 ## 5.2 Feature flags
 
 `public.feature_flags` é lida pelo front (`useFeatureFlags`) **e** pelo banco

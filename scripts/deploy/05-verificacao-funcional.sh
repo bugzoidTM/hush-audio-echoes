@@ -287,6 +287,45 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# 7.2 Visitante: ouve o link compartilhado, mas não o catálogo inteiro.
+# ---------------------------------------------------------------------------
+
+# Decisão de produto: Echo compartilhado toca sem cadastro (é o mecanismo de
+# aquisição); Discovery infinito exige conta. O gate tem de ser do servidor —
+# a chave anon vai dentro do bundle, então esconder botão não esconde nada.
+visitante() { curl -s -H "apikey: $ANON_KEY" -H "Authorization: Bearer $ANON_KEY" "$@"; }
+
+PUBLICO="$(visitante -X POST "$PUBLIC_SUPABASE_URL/rest/v1/rpc/get_public_echo" \
+  -H 'Content-Type: application/json' -d "$(jq -nc --arg id "$ANON_ID" '{p_echo_id:$id}')")"
+jq -e --arg id "$ANON_ID" '.[0].id == $id' >/dev/null <<<"$PUBLICO" \
+  && pass "visitante sem conta ouve o Echo compartilhado" || fail "Echo compartilhado não abre sem conta: $PUBLICO"
+
+AUDIO_VISITANTE="$(curl -s -o /dev/null -w '%{http_code}' "$(jq -r '.[0].audio_url' <<<"$PUBLICO")")"
+[ "$AUDIO_VISITANTE" = "200" ] && pass "o áudio toca para quem não tem conta" \
+  || fail "áudio não acessível sem conta (HTTP $AUDIO_VISITANTE)"
+
+FEED_VISITANTE="$(visitante -X POST "$PUBLIC_SUPABASE_URL/rest/v1/rpc/get_discovery_feed" \
+  -H 'Content-Type: application/json' -d '{"p_limit":12}')"
+jq -e '.code == "42501"' >/dev/null <<<"$FEED_VISITANTE" \
+  && pass "Discovery infinito recusado para visitante (na RPC, não só na tela)" \
+  || fail "visitante leu o Discovery direto no PostgREST: $FEED_VISITANTE"
+
+PREVIA="$(visitante -X POST "$PUBLIC_SUPABASE_URL/rest/v1/rpc/get_public_preview_feed" \
+  -H 'Content-Type: application/json' -d '{}')"
+jq -e 'type == "array" and length <= 3' >/dev/null <<<"$PREVIA" \
+  && pass "prévia pública responde e serve no máximo 3 Echoes" || fail "prévia pública: $PREVIA"
+
+PREVIA_TETO="$(visitante -X POST "$PUBLIC_SUPABASE_URL/rest/v1/rpc/get_public_preview_feed" \
+  -H 'Content-Type: application/json' -d '{"p_limit":99}')"
+jq -e 'length <= 3' >/dev/null <<<"$PREVIA_TETO" \
+  && pass "teto da prévia não é contornável pelo parâmetro" || fail "prévia devolveu mais que 3 com p_limit alto"
+
+PRIVADAS="$(visitante -X POST "$PUBLIC_SUPABASE_URL/rest/v1/rpc/get_review_queue" \
+  -H 'Content-Type: application/json' -d '{"p_scope":"all"}')"
+jq -e '.code == "42501" or (.message // "" | test("moderação|permission"))' >/dev/null <<<"$PRIVADAS" \
+  && pass "fila de moderação continua fechada para visitante" || fail "visitante alcançou a fila: $PRIVADAS"
+
+# ---------------------------------------------------------------------------
 # 8. Voice, apagar e expiração da mídia.
 # ---------------------------------------------------------------------------
 log "criando Voice e publicando com identidade"

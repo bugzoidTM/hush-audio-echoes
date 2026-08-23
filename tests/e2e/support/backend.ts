@@ -179,6 +179,12 @@ export async function mockBackend(page: Page): Promise<BackendState> {
     if (path.startsWith('/rest/v1/rpc/get_my_echo_status')) {
       return json(route, [{ id: echoId, moderation_status: state.moderationStatus, moderated_at: null, published_at: new Date().toISOString() }])
     }
+    if (path.startsWith('/rest/v1/rpc/get_public_preview_feed')) {
+      const body = request.postDataJSON?.() as { p_exclude_ids?: string[] } | undefined
+      const heard = new Set(body?.p_exclude_ids ?? [])
+      const pool = [echo(state), echo(state, { id: otherEchoId, title: 'Segundo Echo da prévia' })]
+      return json(route, pool.filter((item) => !heard.has(item.id as string)))
+    }
     if (path.startsWith('/rest/v1/rpc/get_public_voice')) {
       return json(route, [{
         id: voiceId,

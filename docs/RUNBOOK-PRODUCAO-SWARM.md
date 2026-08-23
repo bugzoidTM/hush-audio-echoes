@@ -165,8 +165,50 @@ docker exec $(docker ps -q -f 'name=^/supabase_db\.') psql -h 127.0.0.1 -U supab
 /usr/local/lib/shhhh/moderate-pending-echoes.sh
 ```
 
-A decisão humana passa pela Edge Function `moderate-echo` (exige papel `admin`
-ou `moderator` em `user_roles`) e grava `moderation_source = 'human'`.
+A decisão humana é tomada no painel de Trust & Safety (§5.1.1) e grava
+`moderation_source = 'human'`. A Edge Function `moderate-echo` continua
+disponível para automação, com a mesma exigência de papel.
+
+## 5.1.1 Painel de Trust & Safety (`/admin`)
+
+A tela em `https://shhhh.me/admin` é a outra metade da moderação: sem ela, tudo
+que o worker manda para `review_required` fica invisível para sempre. Exige
+papel `admin` ou `moderator` em `public.user_roles` — a checagem é do banco
+(`public.is_moderator()`), refeita dentro de cada RPC; a tela só deixa de
+renderizar.
+
+Dar papel a alguém:
+
+```sql
+insert into public.user_roles (user_id, role)
+select id, 'moderator' from auth.users where email = 'pessoa@exemplo.com'
+on conflict do nothing;
+```
+
+O painel mostra a fila (revisão humana, presos em análise há 30+ min, e Echoes
+denunciados), com player, **transcrição do servidor** e o texto enviado pelo
+cliente escondido e rotulado como não confiável — útil para ver quem tentou
+enganar a moderação. Ações, todas com nota que fica no registro:
+
+| Ação | Efeito |
+| --- | --- |
+| Aprovar | volta ao Discovery; denúncias abertas viram `dismissed` |
+| Limitar alcance | sai do Discovery, **link direto continua valendo** |
+| Rejeitar | sai do ar (`status='deleted'`) e a mídia expira na limpeza seguinte |
+| Suspender Voice | `voices.status='suspended'`; os Echoes dela somem do feed na hora |
+| Suspender conta | bloqueia o login no GoTrue e manda o conteúdo para `review_required` |
+
+Suspender conta é a única ação que passa por Edge Function (`suspend-account`):
+bloquear login exige a `service_role`, que nunca pode chegar ao navegador. Duas
+travas: ninguém suspende a própria conta, e conta com papel de moderação não é
+suspensa pelo painel. Reativar devolve o login, mas **não republica em massa** —
+cada Echo volta pela fila.
+
+Verificação ponta a ponta (cria duas contas descartáveis e apaga tudo):
+
+```bash
+scripts/deploy/07-verificacao-moderacao.sh
+```
 
 ## 5.2 Feature flags
 

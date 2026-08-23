@@ -9,7 +9,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 # `main` é o roteador do edge-runtime (vem no pacote self-hosted); a cópia
 # versionada aqui sobe os limites de memória e de tempo do worker, que os
 # padrões deixam baixos demais para a transcrição.
-FUNCTIONS=(main publish-echo discovery-feed moderate-echo generate-echo-hook transcribe-audio cleanup-expired-audios)
+FUNCTIONS=(main publish-echo discovery-feed moderate-echo suspend-account generate-echo-hook transcribe-audio cleanup-expired-audios)
 TARGET="$SUPABASE_VOLUMES_DIR/functions"
 [ -d "$TARGET" ] || die "diretório de functions não encontrado: $TARGET"
 

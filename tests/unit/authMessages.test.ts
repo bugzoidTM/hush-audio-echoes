@@ -18,4 +18,14 @@ describe('authErrorMessage', () => {
   it('tem um texto padrão quando não há mensagem', () => {
     expect(authErrorMessage(null)).toBe('Não foi possível concluir. Tente novamente.')
   })
+
+  it('explica a falha do captcha em vez de mostrar o erro cru do servidor', () => {
+    // O GoTrue devolve "captcha verification process failed" (500) quando o
+    // token não chega e "captcha protection: request disallowed" (400) quando
+    // ele é inválido. Os dois viram a mesma instrução acionável.
+    expect(authErrorMessage(new Error('captcha verification process failed')))
+      .toMatch(/verificação de segurança/i)
+    expect(authErrorMessage(new Error('captcha protection: request disallowed (invalid-input-response)')))
+      .toMatch(/verificação de segurança/i)
+  })
 })

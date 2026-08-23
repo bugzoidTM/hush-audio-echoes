@@ -70,6 +70,23 @@ test.describe('visitante sem conta', () => {
     await expect(page.getByText(/18 anos ou mais/i).first()).toBeVisible()
   })
 
+  test('consegue falar com o shhhh sem ter conta', async ({ page }) => {
+    const backend = await mockBackend(page)
+    // O canal de exercício de direitos precisa funcionar para quem não tem (ou
+    // não consegue mais ter) conta — inclusive para pedir exclusão de dados.
+    await page.goto('/contato')
+
+    const enviar = page.getByRole('button', { name: /enviar mensagem/i })
+    await expect(enviar).toBeDisabled()
+
+    await page.getByLabel('Mensagem').fill('Gostaria de saber quais dados vocês guardam sobre mim e como apagá-los.')
+    await expect(enviar).toBeEnabled()
+    await enviar.click()
+
+    await expect(page.getByText(/recebemos sua mensagem/i)).toBeVisible({ timeout: 15_000 })
+    expect(backend.contatoEnviado).toBe(true)
+  })
+
   test('a landing manda o visitante ouvir, não se cadastrar', async ({ page }) => {
     await mockBackend(page)
     await page.goto('/')

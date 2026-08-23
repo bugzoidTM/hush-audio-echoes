@@ -162,7 +162,7 @@ export default function SettingsPage() {
             <Link className="font-semibold text-indigo-600 hover:underline" to="/diretrizes">Diretrizes da Comunidade</Link>
           </p>
           <p className="mt-2 text-sm text-slate-500">
-            Outros pedidos sobre seus dados: <a className="font-semibold text-indigo-600 hover:underline" href="mailto:privacidade@shhhh.me">privacidade@shhhh.me</a>
+            Outros pedidos sobre seus dados: <Link className="font-semibold text-indigo-600 hover:underline" to="/contato">formulário de contato</Link>
           </p>
         </article>
 

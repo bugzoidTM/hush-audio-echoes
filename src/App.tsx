@@ -16,6 +16,7 @@ import PreviewPage from './pages/hush/PreviewPage'
 import TermosPage from './pages/legal/TermosPage'
 import PrivacidadePage from './pages/legal/PrivacidadePage'
 import DiretrizesPage from './pages/legal/DiretrizesPage'
+import ContatoPage from './pages/legal/ContatoPage'
 import EchoesPage from './pages/hush/EchoesPage'
 import MyVoicesPage from './pages/hush/MyVoicesPage'
 import CommunitiesPage from './pages/hush/CommunitiesPage'
@@ -64,6 +65,7 @@ export default function AppRouter() {
                 <Route path="/termos" element={<TermosPage />} />
                 <Route path="/privacidade" element={<PrivacidadePage />} />
                 <Route path="/diretrizes" element={<DiretrizesPage />} />
+                <Route path="/contato" element={<ContatoPage />} />
                 <Route path="/app" element={<HushLayout />}>
                   <Route index element={<Navigate to="echoes" replace />} />
                   <Route path="echoes" element={<EchoesPage />} />

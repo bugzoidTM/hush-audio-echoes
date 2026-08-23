@@ -328,6 +328,51 @@ evita apagar um upload que ainda está entre o arquivo e a linha).
 select count(*) from public.list_orphan_media(60);
 ```
 
+## 5.1.7 Turnstile e canal de contato
+
+**Turnstile ligado em 2026-08-24.** Os dois lados precisam estar configurados —
+o widget sozinho não protege nada:
+
+```bash
+# front (a site key é pública, vai no bundle)
+echo 'VITE_TURNSTILE_SITE_KEY=<site-key>' >> .env.production && npm run build
+
+# GoTrue é quem valida o token
+docker service update \
+  --env-add GOTRUE_SECURITY_CAPTCHA_ENABLED=true \
+  --env-add GOTRUE_SECURITY_CAPTCHA_PROVIDER=turnstile \
+  --env-add "GOTRUE_SECURITY_CAPTCHA_SECRET=$(cat /root/.shhhh-turnstile-secret)" \
+  supabase_auth
+```
+
+Conferir sem criar conta (deve recusar nos dois casos):
+
+```bash
+curl -s -X POST "$PUBLIC_SUPABASE_URL/auth/v1/signup" -H "apikey: $ANON" \
+  -H 'Content-Type: application/json' -d '{"email":"x@example.invalid","password":"Aa1!123456"}'
+# → "captcha verification process failed"
+```
+
+O **cadastro pelo admin** (`/auth/v1/admin/users`, usado por todos os scripts de
+verificação) não passa por captcha — por isso `05`, `07`, `08` e `09` continuam
+funcionando.
+
+**Canal de contato:** `/contato` → Edge Function `contato` → Telegram do
+responsável. Escolhido em vez de e-mail porque um pedido de exclusão de dados
+que cai numa caixa que ninguém lê é problema legal, não de suporte. Três travas:
+limite de 3/hora por origem (`consume_rate_limit_by_key`, que reusa o mesmo
+lock e a mesma tabela do limite por conta, guardando `md5(ip)` em vez do IP),
+campo isca contra robôs e verificação opcional do Turnstile — opcional de
+propósito, porque bloquear um pedido legítimo é pior do que receber spam
+limitado. O IP não vai na mensagem: quem escreve pode estar pedindo justamente
+para não ser rastreado.
+
+Segredos no host, fora do Git: `/root/.shhhh-turnstile-secret` e
+`/root/.shhhh-telegram-token` (ambos `chmod 600`). **O token do Telegram estava
+ausente até 2026-08-24** — o `notify()` dos workers retorna calado quando o
+arquivo não existe, então nenhum alerta de worker parado ou fila presa chegou a
+ser enviado desde que foram escritos.
+
 ## 5.2 Feature flags
 
 `public.feature_flags` é lida pelo front (`useFeatureFlags`) **e** pelo banco

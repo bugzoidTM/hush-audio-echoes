@@ -23,6 +23,7 @@ export interface BackendState {
   voiceCreated: boolean
   onboardingComplete: boolean
   following: boolean
+  contatoEnviado: boolean
   ids: { userId: string; voiceId: string; echoId: string; otherEchoId: string }
 }
 
@@ -89,6 +90,7 @@ export async function mockBackend(page: Page): Promise<BackendState> {
     voiceCreated: false,
     onboardingComplete: false,
     following: false,
+    contatoEnviado: false,
     ids: { userId, voiceId, echoId, otherEchoId },
   }
 
@@ -168,6 +170,10 @@ export async function mockBackend(page: Page): Promise<BackendState> {
           })]
         : []
       return json(route, { items, next_cursor: null, has_more: false })
+    }
+    if (path.startsWith('/functions/v1/contato')) {
+      state.contatoEnviado = true
+      return json(route, { ok: true })
     }
     if (path.startsWith('/functions/v1/transcribe-audio')) return json(route, { text: 'transcricao de teste' })
     if (path.startsWith('/functions/v1/generate-echo-hook')) return json(route, { hook: 'chamada de teste', source: 'local' })

@@ -96,6 +96,32 @@ export async function getPublicPreviewFeed(excludeIds: string[] = []): Promise<P
   return rows
 }
 
+export type AssuntoContato = 'privacidade' | 'denuncia' | 'conta' | 'duvida' | 'outro'
+
+/**
+ * Canal de contato. Vai para o Telegram do responsável, não para uma caixa de
+ * e-mail: um pedido de exclusão de dados que cai no vazio é problema legal, não
+ * só de suporte.
+ */
+export async function enviarContato(entrada: {
+  assunto: AssuntoContato
+  mensagem: string
+  contato?: string
+  captchaToken?: string | null
+}): Promise<void> {
+  await requestJson('/functions/v1/contato', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      assunto: entrada.assunto,
+      mensagem: entrada.mensagem,
+      contato: entrada.contato?.trim() || undefined,
+      captchaToken: entrada.captchaToken ?? undefined,
+      website: '',
+    }),
+  })
+}
+
 /** Portabilidade (LGPD, art. 18, V): tudo que está ligado à conta, em JSON. */
 export async function exportMyData(): Promise<unknown> {
   return requestJson('/rest/v1/rpc/export_my_data', {

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { LegalLayout, Secao } from './LegalLayout'
 
 export default function TermosPage() {
@@ -88,7 +89,7 @@ export default function TermosPage() {
       <Secao titulo="Mudanças e contato">
         <p>
           Podemos atualizar estes Termos. Mudanças relevantes serão avisadas dentro do produto. Contato:{' '}
-          <a className="font-semibold text-indigo-600 hover:underline" href="mailto:privacidade@shhhh.me">privacidade@shhhh.me</a>.
+          <Link className="font-semibold text-indigo-600 hover:underline" to="/contato">formulário de contato</Link>.
         </p>
       </Secao>
     </LegalLayout>

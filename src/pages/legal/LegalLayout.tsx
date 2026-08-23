@@ -21,6 +21,7 @@ export function LegalLayout({ title, updatedAt, children }: { title: string; upd
           <Link to="/termos" className="hover:text-indigo-600">Termos</Link>
           <Link to="/privacidade" className="hover:text-indigo-600">Privacidade</Link>
           <Link to="/diretrizes" className="hover:text-indigo-600">Diretrizes</Link>
+          <Link to="/contato" className="hover:text-indigo-600">Contato</Link>
         </nav>
       </div>
 
@@ -32,7 +33,8 @@ export function LegalLayout({ title, updatedAt, children }: { title: string; upd
       <div className="mt-8 space-y-8 text-[15px] leading-relaxed text-slate-700 dark:text-slate-300">{children}</div>
 
       <footer className="mt-16 border-t border-slate-200 pt-6 text-sm text-slate-500 dark:border-slate-800">
-        Dúvidas ou pedidos sobre seus dados: <a className="font-semibold text-indigo-600 hover:underline" href="mailto:privacidade@shhhh.me">privacidade@shhhh.me</a>
+        Dúvidas ou pedidos sobre seus dados:{' '}
+        <Link className="font-semibold text-indigo-600 hover:underline" to="/contato">fale com o shhhh</Link>
       </footer>
     </main>
   )

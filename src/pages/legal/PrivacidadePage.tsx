@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { LegalLayout, Secao } from './LegalLayout'
 
 export default function PrivacidadePage() {
@@ -11,7 +12,7 @@ export default function PrivacidadePage() {
       <Secao titulo="Quem é o controlador">
         <p>
           O shhhh é operado por Nutef. Contato para assuntos de privacidade e exercício de direitos:{' '}
-          <a className="font-semibold text-indigo-600 hover:underline" href="mailto:privacidade@shhhh.me">privacidade@shhhh.me</a>.
+          <Link className="font-semibold text-indigo-600 hover:underline" to="/contato">formulário de contato</Link>.
         </p>
       </Secao>
 
@@ -67,7 +68,7 @@ export default function PrivacidadePage() {
           <li><strong>Acesso e portabilidade:</strong> Configurações → <em>Baixar meus dados</em>, que gera um arquivo JSON com conta, Voices, Echoes, transcrições, reações, follows e denúncias.</li>
           <li><strong>Correção:</strong> edite Voice e Echo dentro do produto.</li>
           <li><strong>Eliminação:</strong> Configurações → <em>Excluir minha conta</em>.</li>
-          <li><strong>Demais pedidos:</strong> escreva para privacidade@shhhh.me. Respondemos em até 15 dias.</li>
+          <li><strong>Demais pedidos:</strong> use o <Link className="font-semibold text-indigo-600 hover:underline" to="/contato">formulário de contato</Link>. Respondemos em até 15 dias.</li>
         </ul>
       </Secao>
 

@@ -1,75 +1,83 @@
-# Welcome to your Lovable project
+# shhhh
 
-## Project info
+**Ouça o que ninguém conta.** Rede social de áudio: histórias, segredos e
+desabafos contados pela própria voz — com identidade pseudônima (uma *Voice*)
+ou de forma anônima.
 
-**URL**: https://lovable.dev/projects/3e080982-7b4c-4904-a97e-2336d185d8b0
+Produção: **https://shhhh.me** · backend em Supabase self-hosted (Docker Swarm).
 
-## How can I edit this code?
+## Nome do produto e nome do código
 
-There are several ways of editing your application.
+Uma convenção, para não haver renomeação aleatória nos dois sentidos:
 
-**Use Lovable**
+| Onde | Nome |
+| --- | --- |
+| Marca pública: domínio, título, manifest, textos da interface, loja | **shhhh** |
+| Codinome interno do pivot: docs de arquitetura, PRD, mensagens de commit | **Hush 2.0** |
+| Código: `HushLayout`, `hushApi`, `src/pages/hush/`, repositório `hush-audio-echoes` | **Hush** (identificador, não marca) |
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/3e080982-7b4c-4904-a97e-2336d185d8b0) and start prompting.
+Nada que o usuário lê diz "Hush". Nada que o código chama de `Hush` precisa
+virar `shhhh`: renomear identificador não muda produto e só gera diff.
 
-Changes made via Lovable will be committed automatically to this repo.
+## Conceitos
 
-**Use your preferred IDE**
+- **Echo** — o post: um áudio com categoria, chamada opcional e prazo de
+  validade (1h, 24h, 7d ou permanente).
+- **Voice** — a identidade pública pseudônima (`@handle`), separada da conta.
+  Publicar anonimamente não vincula Voice nenhuma ao Echo.
+- **Protect My Voice** — preview com a voz alterada; o áudio original nunca sai
+  do dispositivo.
+- **Communities** — congeladas atrás da flag `COMMUNITIES_ENABLED` até publicar
+  Echo dentro da Community existir.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Moderação
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Nenhum Echo nasce aprovado. A publicação grava `pending`; um worker no host
+transcreve o **áudio publicado** com o whisper local e só então classifica. O
+texto que o navegador envia serve de UX e nunca de fonte de confiança. O que a
+análise automática não libera vai para a fila humana em `/admin`, que exige
+papel `admin` ou `moderator` — a checagem é do banco, não da tela.
 
-Follow these steps:
+Detalhes e comandos: [`docs/RUNBOOK-PRODUCAO-SWARM.md`](docs/RUNBOOK-PRODUCAO-SWARM.md) §5.1 e §5.1.1.
+
+## Desenvolvimento
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm ci
+cp .env.example .env        # e preencha VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Não existe endereço de Supabase embutido no código: sem `.env`, `vite build`
+falha e `npm run dev` avisa no terminal. Isso é proposital — antes, um build sem
+ambiente apontava calado para a instalação de produção.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Gate antes de qualquer publicação:
 
-**Use GitHub Codespaces**
+```sh
+npm run typecheck && npm run lint && npm test && npm run build
+npx playwright test        # e2e
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Implantação
 
-## What technologies are used for this project?
+O runbook vivo é [`docs/RUNBOOK-PRODUCAO-SWARM.md`](docs/RUNBOOK-PRODUCAO-SWARM.md):
+esta instalação roda o Supabase como **stack do Docker Swarm**, não como
+`docker compose` (o PRD em `docs/PRODUCAO_VPS_SUPABASE.md` assume o contrário e
+está mantido só como referência histórica).
 
-This project is built with:
+```sh
+scripts/deploy/01-backup.sh              # backup verificável
+scripts/deploy/02-apply-migration.sh     # migrações
+scripts/deploy/03-install-functions.sh   # Edge Functions
+scripts/deploy/04-smoke-test.sh
+scripts/deploy/05-verificacao-funcional.sh
+scripts/deploy/06-install-cron.sh        # limpeza + moderação
+scripts/deploy/07-verificacao-moderacao.sh
+npm run build && rsync -a --delete dist/ /root/shhhh-site/public/
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Stack
 
-## How can I deploy this project?
-
-For the **shhhh** production deployment on the self-hosted Supabase VPS, follow the complete, security-first runbook in [`docs/PRODUCAO_VPS_SUPABASE.md`](docs/PRODUCAO_VPS_SUPABASE.md). It covers the database migration, Edge Functions, secrets, scheduled expiry cleanup, front-end deployment, smoke tests, and recovery.
-
-For the existing Lovable workflow, open [Lovable](https://lovable.dev/projects/3e080982-7b4c-4904-a97e-2336d185d8b0) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Vite · React · TypeScript · Tailwind · shadcn-ui · Supabase (Postgres + RLS,
+GoTrue, Storage, Edge Functions em Deno) · whisper local para transcrição.

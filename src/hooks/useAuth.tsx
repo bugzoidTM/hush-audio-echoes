@@ -8,7 +8,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, username: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, username: string, captchaToken?: string | null) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -109,7 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string, username: string) => {
+  const signUp = async (email: string, password: string, username: string, captchaToken?: string | null) => {
     try {
       cleanupAuthState();
       
@@ -122,7 +122,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           emailRedirectTo: redirectUrl,
           data: {
             username,
-          }
+          },
+          // Quem valida o token é o GoTrue, no servidor
+          // (GOTRUE_SECURITY_CAPTCHA_ENABLED). Mandar daqui não protege nada
+          // sozinho — protege porque o servidor recusa cadastro sem token.
+          ...(captchaToken ? { captchaToken } : {}),
         }
       });
 

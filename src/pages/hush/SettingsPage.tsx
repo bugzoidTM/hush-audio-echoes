@@ -15,9 +15,9 @@ export default function SettingsPage() {
     onSuccess: (_resultado, indexable) => {
       void queryClient.invalidateQueries({ queryKey: ['my-voice'] })
       toast({
-        title: indexable ? 'Sua Voice pode aparecer em buscadores.' : 'Sua Voice não aparecerá em buscadores.',
+        title: indexable ? 'Preferência salva: aparecer fora do shhhh.' : 'Preferência salva: não aparecer fora do shhhh.',
         description: indexable
-          ? 'A mudança vale para novas indexações; o que já foi indexado depende do buscador.'
+          ? 'Durante o beta a indexação segue desligada para todas as Voices; sua escolha vale quando ela for liberada.'
           : undefined,
       })
     },
@@ -43,8 +43,14 @@ export default function SettingsPage() {
               <div>
                 <h2 className="font-bold">Aparecer fora do shhhh</h2>
                 <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                  Permite que a página pública da sua Voice apareça em buscadores como o Google. Desligado, ela continua acessível por link — só não é indexada.
-                  Echoes individuais <strong>nunca</strong> são indexados, com ou sem esta opção.
+                  Guarda sua preferência para quando a indexação de Voices for liberada. A página continua acessível por link nos dois casos.
+                  Echoes individuais <strong>nunca</strong> são indexados.
+                </p>
+                {/* Durante o beta o servidor manda noindex em toda /v/, porque
+                    a meta tag da SPA depende de o rastreador executar o
+                    JavaScript. Prometer indexação aqui seria mentir na tela. */}
+                <p className="mt-2 rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                  Durante o beta, <strong>nenhuma</strong> Voice é indexada por buscadores, mesmo com esta opção ligada. Privacidade primeiro.
                 </p>
                 {!voiceQuery.isPending && !voiceQuery.data && (
                   <p className="mt-2 text-sm text-slate-500">Você ainda não tem uma Voice. Crie uma ao publicar um Echo.</p>

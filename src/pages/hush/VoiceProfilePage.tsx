@@ -24,11 +24,14 @@ export default function VoiceProfilePage() {
     enabled: Boolean(voiceQuery.data?.id) && Boolean(user),
   })
 
-  // A página é pseudônima e pode ser compartilhada, mas só entra em buscador se
-  // o dono da Voice pedir. Público ≠ indexado.
+  // A página é pseudônima e pode ser compartilhada, mas não é indexada: durante
+  // o beta o nginx manda noindex em toda /v/, porque confiar na meta tag da SPA
+  // exige que o rastreador execute JavaScript antes de decidir. A escolha do
+  // dono (voices.indexable) fica guardada para quando houver renderização no
+  // servidor capaz de honrá-la por handle.
   usePageMeta({
     title: voiceQuery.data ? `${voiceQuery.data.display_name} (${voiceQuery.data.handle}) — shhhh` : 'Voice — shhhh',
-    robots: voiceQuery.data?.indexable ? 'index, follow' : 'noindex, noarchive',
+    robots: 'noindex, noarchive',
   })
 
   if (voiceQuery.isPending) return <div className="grid min-h-[60dvh] place-items-center"><div className="size-7 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" /></div>

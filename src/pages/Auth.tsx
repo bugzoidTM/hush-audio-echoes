@@ -6,11 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { authErrorMessage } from '@/features/auth/authMessages';
+import { TurnstileWidget } from '@/features/auth/TurnstileWidget';
+import { turnstileEnabled } from '@/features/auth/turnstile';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -68,7 +71,19 @@ const Auth = () => {
       return;
     }
 
-    const { error } = await signUp(email, password, username);
+    // Sem chave configurada o widget não existe e o token é nulo: o cadastro
+    // segue como hoje. Com a chave, o GoTrue é quem recusa sem token.
+    if (turnstileEnabled && !captchaToken) {
+      toast({
+        title: 'Confirme que você não é um robô',
+        description: 'A verificação de segurança ainda não terminou. Aguarde um instante e tente de novo.',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    const { error } = await signUp(email, password, username, captchaToken);
 
     if (error) {
       toast({
@@ -183,6 +198,7 @@ const Auth = () => {
                     required
                   />
                 </div>
+                <TurnstileWidget onToken={setCaptchaToken} />
                 <Button 
                   type="submit" 
                   className="w-full gradient-bg"

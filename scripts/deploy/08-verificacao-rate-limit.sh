@@ -91,6 +91,38 @@ ORPHANS="$(sql "select count(*) from public.audio_posts where owner_user_id = '$
   || fail "$ORPHANS Echoes no banco para $LIMIT publicações aceitas"
 
 # ---------------------------------------------------------------------------
+# 1.1 Concorrência: o limite não pode ser furado com requisições simultâneas.
+# ---------------------------------------------------------------------------
+
+# Antes do lock consultivo, N requisições simultâneas liam o mesmo total antes
+# de qualquer INSERT e passavam todas juntas — o limite virava
+# "limite + concorrência". Este é o teste que a versão sequencial não pega.
+db_psql -q -c "delete from public.rate_limit_hits where user_id = '$USER_ID';" >/dev/null
+db_psql -q -c "delete from public.audio_posts where owner_user_id = '$USER_ID';" >/dev/null
+
+PARALELAS=12
+for indice in $(seq 1 $PARALELAS); do
+  publish "paralela-$indice" > "$WORK/paralela-$indice.code" &
+done
+wait
+
+aceitas_paralelas=0; barradas_paralelas=0
+for indice in $(seq 1 $PARALELAS); do
+  case "$(cat "$WORK/paralela-$indice.code")" in
+    201) aceitas_paralelas=$((aceitas_paralelas+1)) ;;
+    429) barradas_paralelas=$((barradas_paralelas+1)) ;;
+  esac
+done
+
+[ "$aceitas_paralelas" -eq "$LIMIT" ] \
+  && pass "$PARALELAS publicações simultâneas: exatamente $LIMIT aceitas, $barradas_paralelas barradas" \
+  || fail "concorrência furou o limite: $aceitas_paralelas aceitas (esperado $LIMIT)"
+
+GRAVADOS="$(sql "select count(*) from public.audio_posts where owner_user_id = '$USER_ID';")"
+[ "$GRAVADOS" = "$LIMIT" ] && pass "nada além do limite foi gravado sob concorrência" \
+  || fail "$GRAVADOS Echoes gravados para limite de $LIMIT"
+
+# ---------------------------------------------------------------------------
 # 2. O limite é por conta, não global.
 # ---------------------------------------------------------------------------
 OTHER_CODE="$(curl -s -o /dev/null -w '%{http_code}' -H "apikey: $ANON_KEY" -H "Authorization: Bearer $OTHER_TOKEN" \

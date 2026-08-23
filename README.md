@@ -101,3 +101,16 @@ update public.rate_limits set max_hits = 10 where action = 'publish_echo';
 
 Vite · React · TypeScript · Tailwind · shadcn-ui · Supabase (Postgres + RLS,
 GoTrue, Storage, Edge Functions em Deno) · whisper local para transcrição.
+
+## Um caminho de deploy, não três
+
+A produção é **shhhh.me**, servida pela VPS (nginx + Traefik, stack Swarm
+`shhhh-site`). O `vercel.json` na raiz existe só para desarmar os dois projetos
+Vercel que ainda escutam este repositório (`hush-audio-echoes` e
+`hush-audio-echoes-21jb`): `git.deploymentEnabled.main = false` faz a Vercel
+ignorar os pushes para a main, sem precisar de acesso à conta.
+
+Isso para os builds e os checks vermelhos no GitHub, mas **não apaga os
+projetos** — para removê-los de vez: vercel.com → cada projeto → Settings →
+Advanced → Delete Project (ou Settings → Git → Disconnect). Enquanto existirem,
+eles continuam listados como "Production" no histórico de deployments do repo.

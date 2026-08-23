@@ -212,6 +212,27 @@ serve(async (request) => {
     validatedVoiceId = voice.id
   }
 
+  // Limite de publicação ANTES de subir o arquivo: recusar depois do upload
+  // deixaria mídia órfã no bucket a cada tentativa barrada. Aqui o dono vai
+  // explícito porque a Edge Function escreve com service_role, e os gatilhos do
+  // banco dependem de auth.uid(), que nesse contexto é nulo.
+  const { error: rateLimitError } = await admin.rpc('consume_rate_limit', {
+    p_user_id: user.id,
+    p_action: 'publish_echo',
+  })
+  if (rateLimitError) {
+    const tooManyRequests = rateLimitError.code === 'PT429'
+    if (!tooManyRequests) console.error('publish-echo rate limit falhou', rateLimitError.message)
+    return new Response(JSON.stringify({
+      error: tooManyRequests
+        ? rateLimitError.message
+        : 'Não foi possível validar o limite de publicação. Tente novamente.',
+    }), {
+      status: tooManyRequests ? 429 : 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
   const storagePath = `published/${crypto.randomUUID()}.${extensionFromMimeType(audio.type)}`
   const { error: uploadError } = await admin.storage
     .from('echo-audio')

@@ -22,5 +22,16 @@ export default defineConfig({
     reuseExistingServer: true,
     timeout: 30_000,
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [{
+    name: 'chromium',
+    use: {
+      ...devices['Desktop Chrome'],
+      // Microfone falso do Chromium: sem isto o getUserMedia do gravador
+      // trava pedindo permissão e o fluxo de publicação não dá para testar.
+      permissions: ['microphone'],
+      launchOptions: {
+        args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'],
+      },
+    },
+  }],
 })

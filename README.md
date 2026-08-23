@@ -52,12 +52,21 @@ Não existe endereço de Supabase embutido no código: sem `.env`, `vite build`
 falha e `npm run dev` avisa no terminal. Isso é proposital — antes, um build sem
 ambiente apontava calado para a instalação de produção.
 
-Gate antes de qualquer publicação:
+Gate antes de qualquer publicação — o mesmo que o CI roda em todo push e PR
+(`.github/workflows/ci.yml`):
 
 ```sh
 npm run typecheck && npm run lint && npm test && npm run build
 npx playwright test        # e2e
 ```
+
+O E2E `tests/e2e/fluxo-completo.spec.ts` percorre o caminho inteiro de um
+usuário novo — cadastro, onboarding, gravação (com microfone falso do Chromium),
+Protect My Voice, publicação, o gate de "em análise", Discovery, reação, seguir
+Voice e responder — contra um backend simulado em `tests/e2e/support/backend.ts`.
+Ele é hermético de propósito: o CI não tem credencial da instalação real. A
+verdade do backend é verificada contra produção pelos scripts `scripts/deploy/05`
+(fluxo e limites), `07` (moderação) e `08` (rate limiting).
 
 ## Implantação
 
@@ -75,6 +84,17 @@ scripts/deploy/05-verificacao-funcional.sh
 scripts/deploy/06-install-cron.sh        # limpeza + moderação
 scripts/deploy/07-verificacao-moderacao.sh
 npm run build && rsync -a --delete dist/ /root/shhhh-site/public/
+```
+
+## Limites por conta
+
+`public.rate_limits` guarda o limite de cada ação (publicar, reagir, denunciar,
+criar Voice, seguir). Vale no banco — gatilho nas tabelas que o PostgREST expõe
+e chamada explícita na Edge Function de publicação — então nenhum cliente escapa.
+Ajustar é um `UPDATE`, sem deploy:
+
+```sql
+update public.rate_limits set max_hits = 10 where action = 'publish_echo';
 ```
 
 ## Stack

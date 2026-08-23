@@ -210,6 +210,30 @@ Verificação ponta a ponta (cria duas contas descartáveis e apaga tudo):
 scripts/deploy/07-verificacao-moderacao.sh
 ```
 
+## 5.1.2 Limites de gravação
+
+| Limite | Onde é aplicado |
+| --- | --- |
+| 5 a 60 segundos | gravador corta sozinho (com contagem regressiva na tela) e `publish-echo` recusa duração declarada fora da faixa |
+| 3 MB por arquivo | `publish-echo` (60 s cabem com folga; até WAV 16 kHz mono dá ~1,9 MB) |
+| **duração real** | worker de moderação, com `ffprobe`, **antes de transcrever** |
+
+A duração que chega em `publish-echo` é **declarada pelo cliente**. Um cliente
+modificado enviava 30 minutos dizendo 30 segundos: o arquivo passava e o whisper
+em CPU ficava meia hora mastigando — negação de serviço barata. Por isso o
+worker mede o áudio publicado antes de gastar transcrição; acima do limite, o
+Echo vai para `review_required` com a duração real registrada em
+`moderation_note`, sem consumir CPU, e o dono é avisado no Telegram.
+
+Regressão coberta por `scripts/deploy/05-verificacao-funcional.sh`: arquivo
+acima do teto recusado, durações declaradas inválidas recusadas (0, 4, 61, 3600,
+texto) e áudio de 30 min resolvido pelo worker em ~1 s, fora do Discovery.
+
+Para mudar os limites: `DISCOVERY_DURATION` em
+`src/features/echoes/services/discoveryPolicy.ts` (front, incluindo o corte da
+gravação), as constantes no topo de `supabase/functions/publish-echo/index.ts`
+e `SHHHH_MAX_DURATION_SECONDS` no worker — os três precisam concordar.
+
 ## 5.2 Feature flags
 
 `public.feature_flags` é lida pelo front (`useFeatureFlags`) **e** pelo banco

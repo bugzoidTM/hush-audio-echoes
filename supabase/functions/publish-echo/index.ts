@@ -12,6 +12,13 @@ const corsHeaders = {
 const allowedExpirations = new Set(['1h', '6h', '24h', '7d', 'permanent'])
 const allowedMimeTypes = new Set(['audio/webm', 'audio/ogg', 'audio/wav', 'audio/mpeg'])
 
+// Limites do Echo. A duração declarada aqui é do cliente e vale como triagem;
+// a conferência que vale está no worker (scripts/deploy/moderate-pending-echoes.sh),
+// que mede o áudio publicado com ffprobe antes de gastar CPU com transcrição.
+const minDurationSeconds = 5
+const maxDurationSeconds = 60
+const maxAudioBytes = 3 * 1024 * 1024
+
 function toOptionalText(value: FormDataEntryValue | null, maximum: number): string | null {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
@@ -104,14 +111,20 @@ serve(async (request) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
-  if (audio.size > 10 * 1024 * 1024) {
-    return new Response(JSON.stringify({ error: 'O Echo excede o limite de 10 MB.' }), {
+  // Teto de bytes coerente com 60 s de fala: mesmo em WAV descomprimido
+  // (16 kHz mono, 16 bits) 60 s dão ~1,9 MB. Os 10 MB de antes davam espaço
+  // para ~55 minutos de opus a 24 kbps — foi assim que um áudio de 30 minutos
+  // passou declarando 30 segundos. O teto sozinho não resolve (dá para
+  // encodar horas em poucos KB): quem fecha o buraco é a conferência da
+  // duração real no worker de moderação, antes de qualquer transcrição.
+  if (audio.size > maxAudioBytes) {
+    return new Response(JSON.stringify({ error: `O Echo excede o limite de ${Math.round(maxAudioBytes / 1024 / 1024)} MB.` }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
-  if (!Number.isFinite(duration) || duration < 5 || duration > 60) {
-    return new Response(JSON.stringify({ error: 'No Discovery, um Echo deve ter entre 5 e 60 segundos.' }), {
+  if (!Number.isFinite(duration) || duration < minDurationSeconds || duration > maxDurationSeconds) {
+    return new Response(JSON.stringify({ error: `No Discovery, um Echo deve ter entre ${minDurationSeconds} e ${maxDurationSeconds} segundos.` }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

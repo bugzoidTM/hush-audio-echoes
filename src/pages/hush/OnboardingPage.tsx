@@ -4,17 +4,24 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getCategories, completeOnboarding, createVoice } from '@/features/echoes/services/hushApi'
+import { suggestVoice } from '@/features/echoes/voiceSuggestion'
 import type { EchoCategory } from '@/features/echoes/types'
+import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
 
 export default function OnboardingPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
+  const { user } = useAuth()
   const [step, setStep] = useState(1)
   const [categories, setCategories] = useState<EchoCategory[]>([])
   const [selected, setSelected] = useState<string[]>([])
-  const [name, setName] = useState(() => `Voz ${Math.random().toString(16).slice(2, 6).toUpperCase()}`)
-  const [handle, setHandle] = useState(() => `voz${Math.random().toString(36).slice(2, 8)}`)
+  // O nome escolhido no cadastro vira a sugestão da Voice. Antes vinha um
+  // aleatório aqui, e quem tinha digitado "Compositor" no cadastro não achava o
+  // nome em lugar nenhum.
+  const [suggestion] = useState(() => suggestVoice(user?.user_metadata?.username as string | undefined))
+  const [name, setName] = useState(suggestion.displayName)
+  const [handle, setHandle] = useState(suggestion.handle)
   const [creating, setCreating] = useState(false)
 
   useEffect(() => { void getCategories().then(setCategories).catch(() => toast({ title: 'Não foi possível carregar os assuntos.', variant: 'destructive' })) }, [toast])

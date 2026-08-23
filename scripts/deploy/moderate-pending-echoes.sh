@@ -14,6 +14,12 @@ set -euo pipefail
 SUPABASE_STACK="${SUPABASE_STACK:-supabase}"
 PUBLIC_SUPABASE_URL="${PUBLIC_SUPABASE_URL:-https://supabase.nutef.com}"
 BATCH="${SHHHH_MODERATION_BATCH:-5}"
+# Limite real do Echo. A duração que chega no publish-echo é declarada pelo
+# cliente: um cliente modificado manda 30 minutos dizendo 30 segundos, e o
+# whisper em CPU passa meia hora mastigando o arquivo. Aqui o áudio publicado é
+# medido antes de qualquer transcrição.
+MAX_DURATION="${SHHHH_MAX_DURATION_SECONDS:-60}"
+DURATION_TOLERANCE="${SHHHH_DURATION_TOLERANCE:-3}"
 TELEGRAM_TOKEN_FILE="${SHHHH_TELEGRAM_TOKEN_FILE:-/root/.shhhh-telegram-token}"
 TELEGRAM_CHAT_ID="${SHHHH_TELEGRAM_CHAT_ID:-1610680538}"
 
@@ -52,6 +58,14 @@ notify() {
   [ -n "$token" ] || return 0
   curl -s -X POST "https://api.telegram.org/bot${token}/sendMessage" \
     -d "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${message}" >/dev/null || true
+}
+
+# Duração real do arquivo, em segundos inteiros (0 se não der para medir).
+probe_duration() {
+  local file="$1" seconds
+  seconds="$(docker exec -i "$WHISPER_CONTAINER" ffprobe -v error -show_entries format=duration \
+    -of default=noprint_wrappers=1:nokey=1 - < "$file" 2>/dev/null | head -n1)"
+  printf '%.0f' "${seconds:-0}" 2>/dev/null || printf '0'
 }
 
 # Transcrição de um arquivo local usando o whisper da VPS.
@@ -117,6 +131,18 @@ else
       log "echo ${echo_id}: download falhou"
       db_psql_vars "SELECT public.apply_server_moderation(:'echo_id'::uuid, NULL, 'server_stt', :'note');" \
         -v echo_id="$echo_id" -v note="download do áudio publicado falhou" >/dev/null
+      continue
+    fi
+
+    # Antes de transcrever: o áudio publicado cabe no limite? Um arquivo mais
+    # longo que o teto não é erro de transcrição — é conteúdo fora da regra, e
+    # vai direto para revisão humana sem consumir o whisper.
+    real_duration="$(probe_duration "$audio")"
+    if [ "${real_duration:-0}" -gt "$((MAX_DURATION + DURATION_TOLERANCE))" ]; then
+      log "echo ${echo_id}: ${real_duration}s excede o limite de ${MAX_DURATION}s — sem transcrição"
+      db_psql_vars "SELECT public.flag_oversized_echo(:'echo_id'::uuid, :duration::integer, :maxdur::integer);" \
+        -v echo_id="$echo_id" -v duration="$real_duration" -v maxdur="$MAX_DURATION" >/dev/null
+      notify "shhhh: Echo enviado com ${real_duration}s (limite ${MAX_DURATION}s) foi barrado sem transcrever. Cliente modificado ou limite furado no app."
       continue
     fi
 

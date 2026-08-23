@@ -235,6 +235,58 @@ jq -e 'type == "array"' >/dev/null <<<"$REPLIES" \
   && pass "get_echo_replies responde (thread da conversa)" || fail "get_echo_replies: $REPLIES"
 
 # ---------------------------------------------------------------------------
+# 7.1 Limites de gravação: o áudio publicado é medido, não acreditado.
+# ---------------------------------------------------------------------------
+
+# A duração que chega no publish-echo é declarada pelo cliente. Já foi possível
+# publicar 30 minutos dizendo 30 segundos — e o whisper em CPU ia mastigar o
+# arquivo inteiro. Duas travas: teto de bytes e medição real no worker.
+log "gerando áudio de 30 minutos abaixo do teto de bytes (10 kbps)"
+ffmpeg -loglevel error -y -f lavfi -i "sine=frequency=300:duration=1800" -c:a libopus -b:a 10k "$WORK/longo.webm"
+ffmpeg -loglevel error -y -f lavfi -i "sine=frequency=300:duration=600" -c:a libopus -b:a 64k "$WORK/pesado.webm"
+
+BIG_CODE="$(api -o /dev/null -w '%{http_code}' -X POST "$PUBLIC_SUPABASE_URL/functions/v1/publish-echo" \
+  -F "audio=@$WORK/pesado.webm;type=audio/webm" -F 'duration=30' -F 'identity_mode=anonymous' \
+  -F "category_id=$CATEGORY_ID" -F 'expiration=1h' -F 'voice_protection_enabled=false')"
+[ "$BIG_CODE" = "400" ] && pass "arquivo acima do teto de bytes recusado (HTTP $BIG_CODE)" \
+  || fail "arquivo grande aceito (HTTP $BIG_CODE)"
+
+for bad in 0 4 61 3600 abc; do
+  CODE="$(api -o /dev/null -w '%{http_code}' -X POST "$PUBLIC_SUPABASE_URL/functions/v1/publish-echo" \
+    -F "audio=@$WORK/echo.webm;type=audio/webm" -F "duration=$bad" -F 'identity_mode=anonymous' \
+    -F "category_id=$CATEGORY_ID" -F 'expiration=1h' -F 'voice_protection_enabled=false')"
+  [ "$CODE" = "400" ] || fail "duração declarada '$bad' foi aceita (HTTP $CODE)"
+done
+pass "durações declaradas fora de 5–60s recusadas (0, 4, 61, 3600, texto)"
+
+LONG_ECHO="$(api -X POST "$PUBLIC_SUPABASE_URL/functions/v1/publish-echo" \
+  -F "audio=@$WORK/longo.webm;type=audio/webm" -F 'duration=30' -F 'identity_mode=anonymous' \
+  -F "category_id=$CATEGORY_ID" -F 'expiration=1h' -F 'voice_protection_enabled=false' \
+  -F 'title=Trinta minutos declarando trinta segundos')"
+LONG_ID="$(jq -r '.id // empty' <<<"$LONG_ECHO")"
+if [ -z "$LONG_ID" ]; then
+  fail "não foi possível publicar o áudio longo de teste: $LONG_ECHO"
+else
+  # O worker mede antes de transcrever: tem de resolver em segundos, não em
+  # minutos de whisper. O tempo aqui é a prova de que a CPU não foi consumida.
+  started="$(date +%s)"
+  "$(dirname "${BASH_SOURCE[0]}")/moderate-pending-echoes.sh" >"$WORK/worker-longo.log" 2>&1 || true
+  elapsed="$(( $(date +%s) - started ))"
+
+  LONG_STATE="$(sql "select moderation_status || '|' || duration::text || '|' || coalesce(transcription,'<null>') from public.audio_posts where id = '$LONG_ID';")"
+  case "$LONG_STATE" in
+    "review_required|1800|<null>") pass "áudio de 30 min barrado com a duração real registrada e sem transcrição" ;;
+    *) fail "estado do áudio longo: $LONG_STATE" ;;
+  esac
+  [ "$elapsed" -lt 30 ] && pass "worker resolveu o áudio longo em ${elapsed}s (sem gastar whisper)" \
+    || fail "worker levou ${elapsed}s no áudio longo — a medição não evitou a transcrição"
+
+  FEED_LONG="$(api "$PUBLIC_SUPABASE_URL/functions/v1/discovery-feed?limit=15")"
+  jq -e --arg id "$LONG_ID" '.items | any(.id == $id) | not' >/dev/null <<<"$FEED_LONG" \
+    && pass "áudio longo não aparece no Discovery" || fail "áudio longo vazou para o Discovery"
+fi
+
+# ---------------------------------------------------------------------------
 # 8. Voice, apagar e expiração da mídia.
 # ---------------------------------------------------------------------------
 log "criando Voice e publicando com identidade"

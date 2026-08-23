@@ -10,11 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { createVoice, generateEchoHook, getCategories, getMyVoice, publishEcho, transcribeFinalAudio } from '@/features/echoes/services/hushApi'
+import { suggestVoice } from '@/features/echoes/voiceSuggestion'
 import { canPublishWithProtection, isDiscoveryDurationValid } from '@/features/echoes/services/discoveryPolicy'
 import { localHookFromTranscription } from '@/features/echoes/services/hookText'
 import { prepareAudioForTranscription, voiceProtectionProvider } from '@/features/echoes/services/voiceProtection'
 import type { EchoCategory, EchoExpiration, IdentityMode, VoiceProtectionPreset } from '@/features/echoes/types'
 import { useAudioRecorder } from '@/hooks/useAudioRecorder'
+import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
 
 interface CreateEchoModalProps {
@@ -40,6 +42,7 @@ const protectionLabels: Record<VoiceProtectionPreset, { title: string; descripti
 
 export function CreateEchoModal({ open, onOpenChange, replyToId }: CreateEchoModalProps) {
   const { toast } = useToast()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const recorder = useAudioRecorder()
   const [categories, setCategories] = useState<EchoCategory[]>([])
@@ -57,8 +60,11 @@ export function CreateEchoModal({ open, onOpenChange, replyToId }: CreateEchoMod
   const [transcription, setTranscription] = useState<string | null>(null)
   const [transcribing, setTranscribing] = useState(false)
   const [showVoiceCreator, setShowVoiceCreator] = useState(false)
-  const [voiceHandle, setVoiceHandle] = useState('')
-  const [voiceDisplayName, setVoiceDisplayName] = useState('')
+  // Mesma sugestão do onboarding: quem pula a criação lá e cria a Voice aqui
+  // não devia ter de inventar um nome do zero.
+  const [voiceSuggestion] = useState(() => suggestVoice(user?.user_metadata?.username as string | undefined))
+  const [voiceHandle, setVoiceHandle] = useState(voiceSuggestion.handle)
+  const [voiceDisplayName, setVoiceDisplayName] = useState(voiceSuggestion.displayName)
 
   useEffect(() => {
     if (!open) return
@@ -214,7 +220,37 @@ export function CreateEchoModal({ open, onOpenChange, replyToId }: CreateEchoMod
                 {recorder.isRecording ? <Square className="size-7 fill-current" /> : <Mic className="size-8" />}
               </div>
               <p className="font-semibold text-slate-900 dark:text-white">{recorder.isRecording ? 'Gravando seu Echo…' : 'Pronto para contar?'}</p>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Entre 5 e 60 segundos para o Discovery.</p>
+
+              {/* A gravação sempre teve corte automático em 60 s, mas invisível:
+                  a pessoa falava sem saber quanto tempo restava e a gravação
+                  morria sozinha. A contagem regressiva é o mesmo limite, dito em
+                  voz alta. */}
+              {recorder.isRecording ? (
+                <div className="mt-4" role="timer" aria-live="polite">
+                  <p className="text-3xl font-black tabular-nums text-slate-950 dark:text-white">
+                    {formatSeconds(recorder.remaining)}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    restantes de {recorder.maxDuration}s
+                  </p>
+                  <div className="mx-auto mt-3 h-1.5 w-48 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                    <div
+                      className={`h-full transition-[width] duration-200 ${recorder.remaining <= 10 ? 'bg-rose-500' : 'bg-indigo-600'}`}
+                      style={{ width: `${(recorder.remaining / recorder.maxDuration) * 100}%` }}
+                    />
+                  </div>
+                  <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+                    {recorder.elapsed < recorder.minDuration
+                      ? `Fale pelo menos ${recorder.minDuration}s para poder publicar.`
+                      : 'Pode parar quando quiser.'}
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  Entre {recorder.minDuration} e {recorder.maxDuration} segundos. A gravação para sozinha no limite.
+                </p>
+              )}
+
               <Button className="mt-6 rounded-2xl px-6" size="lg" onClick={recorder.isRecording ? recorder.stopRecording : () => void recorder.startRecording()}>
                 {recorder.isRecording ? 'Parar gravação' : 'Começar a gravar'}
               </Button>
@@ -224,7 +260,7 @@ export function CreateEchoModal({ open, onOpenChange, replyToId }: CreateEchoMod
           <div className="space-y-6">
             <section className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900">
               <div className="flex items-center justify-between gap-3">
-                <div><p className="font-semibold">Seu preview · {recorder.duration}s</p><p className="text-sm text-slate-500">{durationIsValid ? 'Duração ideal para Discovery.' : 'A gravação deve ter entre 5 e 60 segundos.'}</p></div>
+                <div><p className="font-semibold">Seu preview · {recorder.duration}s</p><p className="text-sm text-slate-500">{durationIsValid ? 'Duração ideal para Discovery.' : `A gravação deve ter entre ${recorder.minDuration} e ${recorder.maxDuration} segundos.`}</p></div>
                 <Button variant="outline" className="rounded-xl" onClick={recorder.resetRecording}><RotateCcw className="mr-2 size-4" /> Gravar de novo</Button>
               </div>
               {previewUrl && <audio className="mt-4 w-full" controls src={previewUrl} />}
@@ -273,4 +309,9 @@ export function CreateEchoModal({ open, onOpenChange, replyToId }: CreateEchoMod
       </Dialog>
     </Dialog>
   )
+}
+
+function formatSeconds(value: number): string {
+  const total = Math.max(0, Math.ceil(value))
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }

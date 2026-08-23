@@ -138,13 +138,20 @@ const Auth = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="username">Nome da conta</label>
+                  <label htmlFor="username">Como você quer ser chamado</label>
                   <Input
                     id="username"
                     name="username"
-                    placeholder="@seuusuario"
+                    placeholder="Compositor"
+                    maxLength={60}
                     required
                   />
+                  {/* Este nome não é a identidade pública por si só: ele vira a
+                      sugestão da sua Voice no onboarding. A conta continua
+                      separada da Voice — é isso que sustenta o anonimato. */}
+                  <p className="text-xs text-muted-foreground">
+                    Vira a sugestão da sua Voice (o @ público). Você pode mudar depois, e sempre pode publicar anonimamente.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="email">Email</label>

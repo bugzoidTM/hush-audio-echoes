@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { VoiceAvatar } from '@/components/hush/VoiceAvatar'
 import { EchoPlayer } from '@/components/hush/EchoPlayer'
 import { trackEchoEvent } from '@/features/analytics/services/analytics'
+import { useTimeLeft } from '@/features/echoes/useTimeLeft'
 import { createReport, setReaction } from '@/features/echoes/services/hushApi'
 import type { EchoReactionType, PublicEcho } from '@/features/echoes/types'
 import { useToast } from '@/hooks/use-toast'
@@ -32,7 +33,7 @@ export function EchoCard({ echo, active, onAudioStarted, onReply, onFollow }: Ec
   const [showTranscript, setShowTranscript] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const [reportReason, setReportReason] = useState<'harassment' | 'threat' | 'doxxing' | 'sexual_content' | 'minor_safety' | 'hate' | 'spam' | 'self_harm' | 'illegal_activity' | 'other'>('harassment')
-  const expiresLabel = useMemo(() => formatExpiration(echo.expires_at), [echo.expires_at])
+  const expiresLabel = useTimeLeft(echo.expires_at)
 
   const react = async (reaction: EchoReactionType) => {
     setSelectedReaction(reaction)
@@ -172,10 +173,3 @@ function formatCount(count: number): string {
   return count >= 1000 ? `${(count / 1000).toFixed(1).replace('.0', '')} mil` : String(count)
 }
 
-function formatExpiration(expiresAt: string | null): string {
-  if (!expiresAt) return 'Permanente'
-  const difference = new Date(expiresAt).getTime() - Date.now()
-  if (difference <= 0) return 'Expirando'
-  const hours = Math.ceil(difference / 3_600_000)
-  return hours < 24 ? `${hours}h restantes` : `${Math.ceil(hours / 24)}d restantes`
-}

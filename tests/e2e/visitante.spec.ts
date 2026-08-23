@@ -51,6 +51,25 @@ test.describe('visitante sem conta', () => {
     await expect(page.getByRole('link', { name: /criar conta grátis/i })).toBeVisible()
   })
 
+  test('lê os documentos sem precisar de conta', async ({ page }) => {
+    await mockBackend(page)
+    // Ninguém deveria precisar de conta para ler os termos aos quais será
+    // submetido, nem a política antes de decidir se entra.
+    for (const [rota, titulo] of [
+      ['/termos', /termos de uso/i],
+      ['/privacidade', /política de privacidade/i],
+      ['/diretrizes', /diretrizes da comunidade/i],
+    ] as const) {
+      await page.goto(rota)
+      await expect(page.getByRole('heading', { name: titulo, level: 1 })).toBeVisible({ timeout: 15_000 })
+    }
+    // O ponto do produto que mais confunde precisa estar escrito: anônimo é
+    // perante outras pessoas, não perante o serviço.
+    await page.goto('/termos')
+    await expect(page.getByText(/não significa que o shhhh não saiba quem publicou/i)).toBeVisible()
+    await expect(page.getByText(/18 anos ou mais/i).first()).toBeVisible()
+  })
+
   test('a landing manda o visitante ouvir, não se cadastrar', async ({ page }) => {
     await mockBackend(page)
     await page.goto('/')

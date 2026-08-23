@@ -161,6 +161,18 @@ else
   done <<< "$queue"
 fi
 
+# Sinal de vida e vigilância cruzada. O aviso de fila envelhecida vem de dentro
+# deste script — se ele morrer, ninguém avisa. Por isso cada worker registra o
+# próprio batimento e confere o do outro: eles rodam em cadências diferentes, e
+# a morte de um é percebida pelo outro.
+db_psql -At -c "SELECT public.record_worker_heartbeat('moderacao');" >/dev/null
+
+parados="$(db_psql -At -F' ' -c "SELECT name, minutos_parado FROM public.stale_workers() WHERE name <> 'moderacao';")"
+if [ -n "$parados" ]; then
+  log "ALERTA: worker parado -> ${parados}"
+  notify "shhhh: worker de manutenção parado (${parados}). Conferir o cron em /usr/local/lib/shhhh e /var/log/shhhh-*.log."
+fi
+
 # Falha silenciosa é o modo de falha perigoso aqui: sem worker, todo Echo novo
 # fica invisível para sempre. Se a fila envelhecer, o dono é avisado.
 stuck="$(db_psql -At -c "

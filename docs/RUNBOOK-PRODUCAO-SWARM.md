@@ -274,6 +274,60 @@ A página da Voice é pseudônima e indexável só se o dono ligar
 `voices.indexable` (Configurações → "Aparecer fora do shhhh"); o padrão é
 desligado, e a meta tag da SPA reflete a escolha.
 
+## 5.1.4 Card social por Echo
+
+O compartilhamento é o canal de aquisição, e todo link colado no WhatsApp
+mostrava o card genérico do site. Agora o nginx desvia **apenas rastreadores**
+(WhatsApp, Telegram, Twitter/X, Facebook, Discord, Slack, LinkedIn e outros)
+para a Edge Function `echo-share`, que devolve HTML só com Open Graph; pessoas
+continuam recebendo a SPA na mesma URL.
+
+O card leva **somente o título aprovado pela moderação**, a categoria e a
+duração — nunca a transcrição nem a descrição livre. Um card vaza para grupos
+inteiros e fica em cache de terceiros.
+
+Detalhe de nginx que custou um 502: com variável no `proxy_pass` o nome é
+resolvido a cada requisição, e sem `resolver 127.0.0.11` o nginx recusa antes de
+tentar. Se o Kong estiver fora, `proxy_intercept_errors` devolve a SPA em vez de
+um erro.
+
+```bash
+curl -A "WhatsApp/2.23" https://shhhh.me/e/<id> | grep og:title
+```
+
+## 5.1.5 Vigilância dos workers
+
+Cada worker registra batimento em `public.worker_heartbeats` e **confere o do
+outro**: moderação roda a cada 2 min, limpeza a cada 15, e a morte de um é
+percebida pelo outro, com aviso no Telegram. O painel `/admin` mostra o estado
+dos dois. Sem isso, worker morto = todo Echo novo invisível para sempre, em
+silêncio.
+
+```sql
+select * from public.worker_heartbeats;
+select * from public.stale_workers();   -- vazio = tudo vivo
+```
+
+## 5.1.6 Direitos do titular e mídia órfã
+
+`Configurações → Baixar meus dados` (RPC `export_my_data`) e
+`Configurações → Excluir minha conta` (Edge Function `delete-account`, com
+reconfirmação de senha). Verificação: `scripts/deploy/09-verificacao-direitos.sh`.
+
+**Armadilha que isso revelou:** `audio_posts.owner_user_id` referencia
+`auth.users` com `ON DELETE CASCADE`. Apagar a conta pelo painel do GoTrue ou
+pela API de admin faz as linhas sumirem levando junto o `storage_path` — e os
+arquivos ficam no bucket para sempre, sem registro que os encontre e com a URL
+pública respondendo. Auditoria em 2026-08-24 encontrou **34 objetos** assim.
+
+Duas defesas: `delete-account` apaga a mídia **antes** da conta, e o cron de
+limpeza faz uma segunda passada removendo órfãos com mais de 1 hora (a folga
+evita apagar um upload que ainda está entre o arquivo e a linha).
+
+```sql
+select count(*) from public.list_orphan_media(60);
+```
+
 ## 5.2 Feature flags
 
 `public.feature_flags` é lida pelo front (`useFeatureFlags`) **e** pelo banco

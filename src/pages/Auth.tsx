@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { authErrorMessage } from '@/features/auth/authMessages';
 import { TurnstileWidget } from '@/features/auth/TurnstileWidget';
 import { turnstileEnabled } from '@/features/auth/turnstile';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 
 const Auth = () => {
@@ -198,6 +198,23 @@ const Auth = () => {
                     required
                   />
                 </div>
+                {/* Idade e aceite explícitos: o shhhh reúne desabafos sobre
+                    sexualidade, relacionamentos e sofrimento emocional. Deixar
+                    isso implícito seria ambíguo justamente onde não pode ser. */}
+                <label className="flex items-start gap-3 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    name="aceite"
+                    required
+                    className="mt-0.5 size-4 shrink-0 rounded border-input"
+                  />
+                  <span>
+                    Declaro que tenho <strong>18 anos ou mais</strong> e aceito os{' '}
+                    <Link to="/termos" target="_blank" className="font-semibold text-primary hover:underline">Termos de Uso</Link>,{' '}
+                    a <Link to="/privacidade" target="_blank" className="font-semibold text-primary hover:underline">Política de Privacidade</Link>{' '}
+                    e as <Link to="/diretrizes" target="_blank" className="font-semibold text-primary hover:underline">Diretrizes da Comunidade</Link>.
+                  </span>
+                </label>
                 <TurnstileWidget onToken={setCaptchaToken} />
                 <Button 
                   type="submit" 

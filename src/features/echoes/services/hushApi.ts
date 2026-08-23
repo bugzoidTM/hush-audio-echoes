@@ -96,6 +96,28 @@ export async function getPublicPreviewFeed(excludeIds: string[] = []): Promise<P
   return rows
 }
 
+/** Portabilidade (LGPD, art. 18, V): tudo que está ligado à conta, em JSON. */
+export async function exportMyData(): Promise<unknown> {
+  return requestJson('/rest/v1/rpc/export_my_data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  })
+}
+
+/**
+ * Eliminação (LGPD, art. 18, VI). Passa por Edge Function porque remover a
+ * conta de autenticação exige service_role, que nunca chega ao navegador — e
+ * porque a senha é reconfirmada no servidor, não na tela.
+ */
+export async function deleteMyAccount(password: string): Promise<void> {
+  await requestJson('/functions/v1/delete-account', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  })
+}
+
 export async function setVoiceIndexable(voiceId: string, indexable: boolean): Promise<void> {
   await requestJson('/rest/v1/rpc/set_voice_indexable', {
     method: 'POST',

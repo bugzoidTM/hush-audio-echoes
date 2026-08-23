@@ -30,6 +30,19 @@ export async function getModerationStats(): Promise<ModerationStats> {
   return rows[0] ?? { pending: 0, stuck_pending: 0, review_required: 0, limited: 0, open_reports: 0, approved_active: 0 }
 }
 
+export interface WorkerStatus {
+  name: string
+  last_run_at: string | null
+  minutos_desde: number
+  runs_total: number
+  parado: boolean
+}
+
+/** A fila só faz sentido se quem a alimenta estiver vivo. */
+export async function getWorkerStatus(): Promise<WorkerStatus[]> {
+  return rpc<WorkerStatus[]>('get_worker_status')
+}
+
 export async function reviewEcho(echoId: string, decision: ModerationDecision, note?: string): Promise<void> {
   await rpc('review_echo', { p_echo_id: echoId, p_decision: decision, p_note: note?.trim() || null })
 }

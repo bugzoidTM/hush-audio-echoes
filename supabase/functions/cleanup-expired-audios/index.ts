@@ -80,11 +80,41 @@ serve(async (request) => {
       }
     }
 
+    // Segunda passada: áudio sem linha no banco.
+    //
+    // audio_posts.owner_user_id referencia auth.users com ON DELETE CASCADE.
+    // Qualquer remoção de conta pelo painel do GoTrue ou pela API de admin faz
+    // as linhas sumirem levando junto o storage_path — e o arquivo fica no
+    // bucket para sempre, sem registro que o encontre e com a URL respondendo.
+    // A exclusão de conta pelo produto já apaga a mídia antes; isto cobre todo
+    // o resto.
+    //
+    // Só objetos com mais de uma hora: um upload recém-feito pelo publish-echo
+    // ainda pode estar entre o arquivo e a linha, e apagá-lo destruiria um Echo
+    // legítimo no meio da publicação.
+    let orphansRemoved = 0
+    const { data: orphans, error: orphanError } = await admin.rpc('list_orphan_media', { p_older_than_minutes: 60 })
+    if (orphanError) {
+      console.error('cleanup: busca de órfãos falhou', orphanError.message)
+    } else {
+      const paths = ((orphans ?? []) as Array<{ name: string }>).map((item) => item.name)
+      for (let index = 0; index < paths.length; index += 100) {
+        const lote = paths.slice(index, index + 100)
+        const { error: removeError } = await admin.storage.from('echo-audio').remove(lote)
+        if (removeError) {
+          console.error('cleanup: remoção de órfãos falhou', removeError.message)
+          break
+        }
+        orphansRemoved += lote.length
+      }
+    }
+
     return new Response(JSON.stringify({
       found_expired: echoes.length,
       media_removed: mediaRemoved,
       marked_expired: echoes.length - failures.length,
       failures: failures.length,
+      orphans_removed: orphansRemoved,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

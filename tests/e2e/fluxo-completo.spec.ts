@@ -24,6 +24,8 @@ test('fluxo completo: do cadastro à resposta', async ({ page }) => {
   await signup.locator('#email').fill('compositor@example.invalid')
   await signup.locator('#password').fill('SenhaDeTeste123!')
   await signup.locator('#confirmPassword').fill('SenhaDeTeste123!')
+  // Declaração de idade e aceite: o cadastro não avança sem isso, de propósito.
+  await signup.locator('input[name="aceite"]').check()
   await signup.getByRole('button', { name: /criar conta|cadastrar/i }).click()
 
   // --- Onboarding ----------------------------------------------------------

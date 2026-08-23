@@ -1,4 +1,4 @@
-import { AlertTriangle, Ban, Clock3, Flag, Loader2, ShieldCheck, ShieldX, UserX } from 'lucide-react'
+import { Activity, AlertTriangle, Ban, Clock3, Flag, Loader2, ShieldCheck, ShieldX, UserX } from 'lucide-react'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -11,6 +11,7 @@ import {
   dismissEchoReports,
   getModerationStats,
   getReviewQueue,
+  getWorkerStatus,
   isModerator,
   reviewEcho,
   setVoiceStatus,
@@ -53,6 +54,10 @@ export default function Admin() {
   const moderatorQuery = useQuery({ queryKey: ['is-moderator'], queryFn: isModerator, enabled: Boolean(user) })
   const statsQuery = useQuery({ queryKey: ['moderation-stats'], queryFn: getModerationStats, enabled: moderatorQuery.data === true, refetchInterval: 60_000 })
   const queueQuery = useQuery({ queryKey: ['review-queue', scope], queryFn: () => getReviewQueue(scope), enabled: moderatorQuery.data === true })
+  // Worker morto é o pior modo de falha: a fila não cresce por conteúdo ruim,
+  // ela cresce porque ninguém está processando. Sem isto na tela, um dia de
+  // Echoes invisíveis passaria por "está calmo hoje".
+  const workersQuery = useQuery({ queryKey: ['worker-status'], queryFn: getWorkerStatus, enabled: moderatorQuery.data === true, refetchInterval: 60_000 })
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['review-queue'] })
@@ -138,6 +143,29 @@ export default function Admin() {
           <StatTile label="Denúncias abertas" value={stats.open_reports} icon={Flag} alert={stats.open_reports > 0} />
           <StatTile label="Alcance limitado" value={stats.limited} icon={ShieldX} />
           <StatTile label="No ar" value={stats.approved_active} icon={ShieldCheck} />
+        </section>
+      )}
+
+      {(workersQuery.data ?? []).some((worker) => worker.parado) && (
+        <p className="mb-6 rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-900 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-100">
+          <AlertTriangle className="mr-2 inline size-4" />
+          <strong>Worker parado.</strong>{' '}
+          {(workersQuery.data ?? []).filter((worker) => worker.parado).map((worker) => `${worker.name} (${worker.minutos_desde >= 999999 ? 'nunca rodou' : `${worker.minutos_desde} min`})`).join(', ')}.
+          {' '}Enquanto isso, nenhum Echo novo sai de "em análise". Conferir o cron em <code>/usr/local/lib/shhhh</code> e o <code>whisper-stt</code>.
+        </p>
+      )}
+
+      {workersQuery.data && workersQuery.data.length > 0 && (
+        <section className="mb-6 flex flex-wrap gap-2" aria-label="Workers de manutenção">
+          {workersQuery.data.map((worker) => (
+            <span
+              key={worker.name}
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${worker.parado ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'}`}
+            >
+              <Activity className="size-3.5" />
+              {worker.name}: {worker.parado ? 'parado' : `há ${worker.minutos_desde} min`}
+            </span>
+          ))}
         </section>
       )}
 

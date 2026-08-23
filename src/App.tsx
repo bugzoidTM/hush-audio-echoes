@@ -13,6 +13,9 @@ import Admin from './pages/Admin'
 import NotFound from './pages/NotFound'
 import LandingPage from './pages/hush/LandingPage'
 import PreviewPage from './pages/hush/PreviewPage'
+import TermosPage from './pages/legal/TermosPage'
+import PrivacidadePage from './pages/legal/PrivacidadePage'
+import DiretrizesPage from './pages/legal/DiretrizesPage'
 import EchoesPage from './pages/hush/EchoesPage'
 import MyVoicesPage from './pages/hush/MyVoicesPage'
 import CommunitiesPage from './pages/hush/CommunitiesPage'
@@ -56,6 +59,11 @@ export default function AppRouter() {
                 {/* Prévia pública: ouvir antes de criar conta. Fica fora do
                     HushLayout de propósito — o layout exige sessão. */}
                 <Route path="/ouvir" element={<PreviewPage />} />
+                {/* Documentos públicos: ninguém deveria precisar de conta para
+                    ler os termos aos quais será submetido. */}
+                <Route path="/termos" element={<TermosPage />} />
+                <Route path="/privacidade" element={<PrivacidadePage />} />
+                <Route path="/diretrizes" element={<DiretrizesPage />} />
                 <Route path="/app" element={<HushLayout />}>
                   <Route index element={<Navigate to="echoes" replace />} />
                   <Route path="echoes" element={<EchoesPage />} />

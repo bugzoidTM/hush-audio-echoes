@@ -38,11 +38,9 @@ create_user() {
     -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" -H 'Content-Type: application/json' \
     -d "$(jq -nc --arg e "$1" --arg p "$2" '{email:$e,password:$p,email_confirm:true}')" | jq -r '.id // empty'
 }
-login() {
-  curl -s -X POST "$PUBLIC_SUPABASE_URL/auth/v1/token?grant_type=password" \
-    -H "apikey: $ANON_KEY" -H 'Content-Type: application/json' \
-    -d "$(jq -nc --arg e "$1" --arg p "$2" '{email:$e,password:$p}')"
-}
+# Token assinado com o segredo da stack: o login por senha exige captcha desde
+# que o Turnstile foi ligado (ver mint_user_token em lib.sh).
+login() { mint_user_token "$1"; }
 
 PASSWORD="$(head -c 18 /dev/urandom | base64 | tr -d '/+=')Aa1!"
 MOD_EMAIL="shhhh-mod-$STAMP@example.invalid"
@@ -55,8 +53,8 @@ AUTHOR_ID="$(create_user "$AUTHOR_EMAIL" "$PASSWORD")"
 
 db_psql -q -c "insert into public.user_roles (user_id, role) values ('$MOD_ID', 'moderator') on conflict do nothing;" >/dev/null
 
-MOD_TOKEN="$(login "$MOD_EMAIL" "$PASSWORD" | jq -r '.access_token // empty')"
-AUTHOR_TOKEN="$(login "$AUTHOR_EMAIL" "$PASSWORD" | jq -r '.access_token // empty')"
+MOD_TOKEN="$(login "$MOD_ID")"
+AUTHOR_TOKEN="$(login "$AUTHOR_ID")"
 [ -n "$MOD_TOKEN" ] && [ -n "$AUTHOR_TOKEN" ] || die "não foi possível autenticar as contas de teste"
 
 as_mod() { curl -s -H "apikey: $ANON_KEY" -H "Authorization: Bearer $MOD_TOKEN" "$@"; }
@@ -176,8 +174,11 @@ SUSPEND="$(as_mod -X POST "$PUBLIC_SUPABASE_URL/functions/v1/suspend-account" -H
   -d "$(jq -nc --arg u "$AUTHOR_ID" '{user_id:$u,suspended:true,note:"suspensão de teste"}')")"
 jq -e '.ok == true' >/dev/null <<<"$SUSPEND" && pass "suspend-account respondeu ok" || fail "suspend-account: $SUSPEND"
 
-RELOGIN="$(login "$AUTHOR_EMAIL" "$PASSWORD" | jq -r '.access_token // "bloqueado"')"
-[ "$RELOGIN" = "bloqueado" ] && pass "conta suspensa não consegue mais entrar" || fail "conta suspensa ainda autentica"
+# Com o Turnstile ligado, o login por senha exige captcha e não serve de prova
+# aqui. A verdade do banimento está no GoTrue: banned_until no futuro.
+BANIDA="$(sql "select coalesce(banned_until > now(), false)::text from auth.users where id = '$AUTHOR_ID';")"
+[ "$BANIDA" = "true" ] && pass "conta suspensa fica banida no GoTrue (login bloqueado)" \
+  || fail "conta suspensa não foi banida (banned_until: $BANIDA)"
 
 SUSPENDED_STATE="$(sql "select (select status from public.voices where id = '$VOICE_ID')||'|'||(select moderation_status from public.audio_posts where id = '$VOICE_ECHO_ID');")"
 [ "$SUSPENDED_STATE" = "suspended|review_required" ] \
@@ -194,8 +195,9 @@ jq -e '.error != null' >/dev/null <<<"$DENIED" && pass "conta comum não suspend
 REACTIVATE="$(as_mod -X POST "$PUBLIC_SUPABASE_URL/functions/v1/suspend-account" -H 'Content-Type: application/json' \
   -d "$(jq -nc --arg u "$AUTHOR_ID" '{user_id:$u,suspended:false}')")"
 jq -e '.ok == true' >/dev/null <<<"$REACTIVATE" && pass "reativação responde ok" || fail "reativação: $REACTIVATE"
-BACK="$(login "$AUTHOR_EMAIL" "$PASSWORD" | jq -r '.access_token // "bloqueado"')"
-[ "$BACK" != "bloqueado" ] && pass "conta reativada volta a entrar" || fail "conta reativada continua bloqueada"
+DESBANIDA="$(sql "select coalesce(banned_until > now(), false)::text from auth.users where id = '$AUTHOR_ID';")"
+[ "$DESBANIDA" = "false" ] && pass "conta reativada deixa de estar banida" \
+  || fail "conta reativada continua banida"
 
 [ "$failures" -eq 0 ] || die "$failures verificação(ões) de moderação falharam"
 log "verificação do painel de moderação aprovada"

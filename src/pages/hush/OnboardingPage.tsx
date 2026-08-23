@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getCategories, completeOnboarding, createVoice } from '@/features/echoes/services/hushApi'
 import { suggestVoice } from '@/features/echoes/voiceSuggestion'
+import { trackAcquisitionOnce } from '@/features/analytics/services/acquisition'
 import type { EchoCategory } from '@/features/echoes/types'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
@@ -32,6 +33,7 @@ export default function OnboardingPage() {
     try {
       if (withVoice) await createVoice({ handle, displayName: name })
       await completeOnboarding(selected)
+      trackAcquisitionOnce('onboarding_completed')
       navigate('/app/echoes', { replace: true })
     } catch (error) { toast({ title: 'Não foi possível concluir', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' }) } finally { setCreating(false) }
   }

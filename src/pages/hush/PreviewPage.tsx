@@ -1,10 +1,11 @@
 import { Headphones, Loader2, Lock, Sparkles } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { EchoCard } from '@/features/echoes/components/EchoCard'
 import { getPublicPreviewFeed } from '@/features/echoes/services/hushApi'
+import { trackAcquisition } from '@/features/analytics/services/acquisition'
 import { PREVIEW_LIMIT, heardEchoes, rememberHeard } from '@/features/echoes/previewGate'
 import { useAuth } from '@/hooks/useAuth'
 import { usePageMeta } from '@/hooks/usePageMeta'
@@ -43,6 +44,9 @@ export default function PreviewPage() {
   const atual = echoes[0]
   const atingiuLimite = ouvidos.length >= PREVIEW_LIMIT
 
+  useEffect(() => { if (!user) trackAcquisition('preview_view') }, [user])
+  useEffect(() => { if (atingiuLimite) trackAcquisition('preview_gate_reached') }, [atingiuLimite])
+
   if (loading) return <div className="grid min-h-dvh place-items-center"><Loader2 className="size-7 animate-spin text-indigo-600" /></div>
 
   // Quem já tem conta não fica na prévia: vai para o Discovery de verdade.
@@ -52,7 +56,10 @@ export default function PreviewPage() {
   }
 
   const ouvirProximo = () => {
-    if (atual) setOuvidos(rememberHeard(atual.id))
+    if (atual) {
+      trackAcquisition('preview_next', atual.id)
+      setOuvidos(rememberHeard(atual.id))
+    }
   }
 
   if (atingiuLimite || (!previa.isPending && !atual)) {
@@ -78,7 +85,7 @@ export default function PreviewPage() {
             echo={atual}
             active
             guest
-            onAudioStarted={() => undefined}
+            onAudioStarted={() => trackAcquisition('preview_play', atual.id)}
             onReply={() => undefined}
             onFollow={() => undefined}
             onGuestAction={() => navigate('/auth')}

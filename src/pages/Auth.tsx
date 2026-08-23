@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { authErrorMessage } from '@/features/auth/authMessages';
 import { TurnstileWidget } from '@/features/auth/TurnstileWidget';
 import { turnstileEnabled } from '@/features/auth/turnstile';
+import { DOCUMENT_VERSIONS, recordLegalAcceptance } from '@/features/auth/legalAcceptance';
+import { trackAcquisition } from '@/features/analytics/services/acquisition';
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 
@@ -17,6 +20,8 @@ const Auth = () => {
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => { trackAcquisition('signup_view') }, []);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -33,7 +38,17 @@ const Auth = () => {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
-    const { error } = await signIn(email, password);
+    if (turnstileEnabled && !captchaToken) {
+      toast({
+        title: 'Confirme que você não é um robô',
+        description: 'A verificação de segurança ainda não terminou. Aguarde um instante e tente de novo.',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    const { error } = await signIn(email, password, captchaToken);
 
     if (error) {
       toast({
@@ -97,6 +112,16 @@ const Auth = () => {
         title: "Conta criada!",
         description: "Você já está entrando no shhhh.",
       });
+      trackAcquisition('signup_completed');
+
+      // Registro do aceite, com as versões dos documentos. Falhar aqui não
+      // desfaz o cadastro — a pessoa já tem conta —, mas fica no console para
+      // não sumir em silêncio.
+      const { data: sessao } = await supabase.auth.getSession();
+      if (sessao.session?.access_token) {
+        void recordLegalAcceptance(sessao.session.access_token)
+          .catch((erro) => console.error('aceite dos documentos não registrado', erro));
+      }
     }
 
     setIsLoading(false);
@@ -140,6 +165,10 @@ const Auth = () => {
                     required
                   />
                 </div>
+                {/* O captcha vale para entrar também, não só para criar
+                    conta: o GoTrue protege os dois caminhos com a mesma
+                    variável, e sem o widget aqui ninguém consegue entrar. */}
+                <TurnstileWidget onToken={setCaptchaToken} />
                 <Button 
                   type="submit" 
                   className="w-full gradient-bg"

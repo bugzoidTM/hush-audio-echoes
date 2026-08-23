@@ -47,10 +47,7 @@ USER_ID="$(curl -s -X POST "$PUBLIC_SUPABASE_URL/auth/v1/admin/users" \
   | jq -r '.id // empty')"
 [ -n "$USER_ID" ] || die "não foi possível criar a conta de teste"
 
-TOKEN="$(curl -s -X POST "$PUBLIC_SUPABASE_URL/auth/v1/token?grant_type=password" \
-  -H "apikey: $ANON_KEY" -H 'Content-Type: application/json' \
-  -d "$(jq -nc --arg e "$EMAIL" --arg p "$PASSWORD" '{email:$e,password:$p}')" \
-  | jq -r '.access_token // empty')"
+TOKEN="$(mint_user_token "$USER_ID")"
 [ -n "$TOKEN" ] || die "não foi possível autenticar a conta de teste"
 
 api() { curl -s -H "apikey: $ANON_KEY" -H "Authorization: Bearer $TOKEN" "$@"; }
@@ -235,6 +232,39 @@ jq -e 'type == "array"' >/dev/null <<<"$REPLIES" \
   && pass "get_echo_replies responde (thread da conversa)" || fail "get_echo_replies: $REPLIES"
 
 # ---------------------------------------------------------------------------
+# 6.1 Moderação cobre o texto público, não só o áudio.
+# ---------------------------------------------------------------------------
+
+# O autor escreve título e descrição livremente, e os dois aparecem em público —
+# inclusive no card do WhatsApp. Gravar "hoje foi um dia normal" e pôr um dado
+# pessoal no título passava pela análise.
+TEXTO_ECHO="$(api -X POST "$PUBLIC_SUPABASE_URL/functions/v1/publish-echo" \
+  -F "audio=@$WORK/echo.webm;type=audio/webm" -F 'duration=8' -F 'identity_mode=anonymous' \
+  -F "category_id=$CATEGORY_ID" -F 'expiration=1h' -F 'voice_protection_enabled=false' \
+  -F 'title=o cpf dele e 123.456.789-00')"
+TEXTO_ID="$(jq -r '.id // empty' <<<"$TEXTO_ECHO")"
+if [ -z "$TEXTO_ID" ]; then
+  fail "não foi possível publicar o Echo de título sensível: $TEXTO_ECHO"
+else
+  DECISAO_TEXTO="$(sql "select public.apply_server_moderation('$TEXTO_ID'::uuid, 'hoje foi um dia normal e tranquilo', 'server_stt');")"
+  [ "$DECISAO_TEXTO" = "review_required" ] \
+    && pass "título com dado pessoal barra o Echo mesmo com áudio inofensivo" \
+    || fail "moderação ignorou o título (decisão: $DECISAO_TEXTO)"
+fi
+
+# Editar depois de aprovado é a mesma brecha por outra porta.
+EDICAO="$(api -X POST "$PUBLIC_SUPABASE_URL/rest/v1/rpc/update_echo_metadata" -H 'Content-Type: application/json' \
+  -d "$(jq -nc --arg id "$ANON_ID" '{p_echo_id:$id,p_title:"vou te encontrar e te matar"}')" | tr -d '"')"
+ESTADO_EDITADO="$(sql "select moderation_status from public.audio_posts where id = '$ANON_ID';")"
+[ "$EDICAO" = "rejected" ] && [ "$ESTADO_EDITADO" = "rejected" ] \
+  && pass "editar o título após a aprovação passa por nova moderação" \
+  || fail "edição pós-aprovação não foi reclassificada (decisão: $EDICAO, estado: $ESTADO_EDITADO)"
+
+# Devolve o Echo ao estado aprovado para as checagens seguintes.
+sql "select public.review_echo('$ANON_ID'::uuid, 'approved', 'restaurado pelo teste');" >/dev/null 2>&1 || \
+  db_psql -q -c "update public.audio_posts set moderation_status='approved', visibility='public', title='Echo de verificação' where id='$ANON_ID';" >/dev/null
+
+# ---------------------------------------------------------------------------
 # 7.1 Limites de gravação: o áudio publicado é medido, não acreditado.
 # ---------------------------------------------------------------------------
 
@@ -324,6 +354,24 @@ PRIVADAS="$(visitante -X POST "$PUBLIC_SUPABASE_URL/rest/v1/rpc/get_review_queue
   -H 'Content-Type: application/json' -d '{"p_scope":"all"}')"
 jq -e '.code == "42501" or (.message // "" | test("moderação|permission"))' >/dev/null <<<"$PRIVADAS" \
   && pass "fila de moderação continua fechada para visitante" || fail "visitante alcançou a fila: $PRIVADAS"
+
+# ---------------------------------------------------------------------------
+# 7.3 Captcha ligado nos dois caminhos de autenticação.
+# ---------------------------------------------------------------------------
+
+# Ligar o Turnstile protegeu o cadastro E o login com a mesma variável do
+# GoTrue. Descobrimos isso quebrando o login em produção: o widget estava só no
+# cadastro. Esta checagem existe para que um desligamento acidental apareça.
+CADASTRO_SEM_CAPTCHA="$(curl -s -X POST "$PUBLIC_SUPABASE_URL/auth/v1/signup" -H "apikey: $ANON_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"captcha-probe@example.invalid","password":"Aa1!probe123456"}')"
+grep -qi 'captcha' <<<"$CADASTRO_SEM_CAPTCHA" \
+  && pass "cadastro sem captcha é recusado" || fail "cadastro passou sem captcha: $(head -c 120 <<<"$CADASTRO_SEM_CAPTCHA")"
+
+LOGIN_SEM_CAPTCHA="$(curl -s -X POST "$PUBLIC_SUPABASE_URL/auth/v1/token?grant_type=password" -H "apikey: $ANON_KEY" \
+  -H 'Content-Type: application/json' -d '{"email":"captcha-probe@example.invalid","password":"Aa1!probe123456"}')"
+grep -qi 'captcha' <<<"$LOGIN_SEM_CAPTCHA" \
+  && pass "login sem captcha é recusado" || fail "login passou sem captcha: $(head -c 120 <<<"$LOGIN_SEM_CAPTCHA")"
 
 # ---------------------------------------------------------------------------
 # 8. Voice, apagar e expiração da mídia.

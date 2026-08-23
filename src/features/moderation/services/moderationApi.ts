@@ -43,6 +43,17 @@ export async function getWorkerStatus(): Promise<WorkerStatus[]> {
   return rpc<WorkerStatus[]>('get_worker_status')
 }
 
+export interface FunnelStep {
+  event_type: string
+  sessoes: number
+  eventos: number
+}
+
+/** Funil de aquisição: quantas sessões distintas chegaram a cada etapa. */
+export async function getAcquisitionFunnel(days = 7): Promise<FunnelStep[]> {
+  return rpc<FunnelStep[]>('get_acquisition_funnel', { p_days: days })
+}
+
 export async function reviewEcho(echoId: string, decision: ModerationDecision, note?: string): Promise<void> {
   await rpc('review_echo', { p_echo_id: echoId, p_decision: decision, p_note: note?.trim() || null })
 }

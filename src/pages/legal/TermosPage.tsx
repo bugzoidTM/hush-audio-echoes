@@ -3,7 +3,7 @@ import { LegalLayout, Secao } from './LegalLayout'
 
 export default function TermosPage() {
   return (
-    <LegalLayout title="Termos de Uso" updatedAt="24 de agosto de 2026">
+    <LegalLayout title="Termos de Uso" updatedAt="23 de agosto de 2026" version="1.0">
       <p>
         O shhhh é uma rede social de áudio onde pessoas contam histórias, segredos e desabafos com a própria voz.
         Ao criar uma conta você concorda com estes Termos. Leia com atenção a seção sobre anonimato: ela descreve
@@ -57,8 +57,8 @@ export default function TermosPage() {
           funciona sem cadastro. Essa permissão termina quando o Echo expira ou é apagado.
         </p>
         <p>
-          Echoes podem ter prazo de validade (1 hora, 24 horas, 7 dias ou permanente). Ao expirar, o arquivo de áudio
-          é removido do armazenamento — não é apenas escondido.
+          Echoes podem ter prazo de validade (1 hora, 6 horas, 24 horas, 7 dias ou permanente). Ao expirar, o arquivo
+          de áudio é removido do armazenamento — não é apenas escondido.
         </p>
       </Secao>
 

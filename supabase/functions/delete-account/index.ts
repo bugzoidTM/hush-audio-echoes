@@ -38,13 +38,20 @@ serve(async (request) => {
   const { data: authData } = await authenticated.auth.getUser()
   if (!authData.user?.email) return json({ error: 'Autenticação obrigatória.' }, 401)
 
-  // Reconfirmação da senha, em cliente separado para não mexer na sessão atual.
-  const verificador = createClient(supabaseUrl, anonKey, { auth: { autoRefreshToken: false, persistSession: false } })
-  const { error: senhaInvalida } = await verificador.auth.signInWithPassword({
-    email: authData.user.email,
-    password: body.password,
+  // Reconfirmação da senha contra o hash do GoTrue, e não por login.
+  //
+  // Com o Turnstile ligado, o GoTrue exige captcha também no login: usar
+  // signInWithPassword aqui quebrava a exclusão de conta — um fluxo que é
+  // obrigação legal — sem qualquer aviso. A RPC confere o bcrypt direto, não
+  // depende de captcha e não cria uma sessão que ninguém pediu.
+  const { data: senhaConfere, error: erroSenha } = await authenticated.rpc('verify_my_password', {
+    p_password: body.password,
   })
-  if (senhaInvalida) return json({ error: 'Senha incorreta.' }, 403)
+  if (erroSenha) {
+    console.error('delete-account: verificação de senha falhou', erroSenha.message)
+    return json({ error: 'Não foi possível confirmar sua senha. Tente novamente.' }, 500)
+  }
+  if (senhaConfere !== true) return json({ error: 'Senha incorreta.' }, 403)
 
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
 

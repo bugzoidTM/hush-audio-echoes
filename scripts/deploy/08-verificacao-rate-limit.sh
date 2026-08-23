@@ -41,15 +41,13 @@ create_user() {
     -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" -H 'Content-Type: application/json' \
     -d "$(jq -nc --arg e "$1" --arg p "$PASSWORD" '{email:$e,password:$p,email_confirm:true}')" | jq -r '.id // empty'
 }
-login() {
-  curl -s -X POST "$PUBLIC_SUPABASE_URL/auth/v1/token?grant_type=password" \
-    -H "apikey: $ANON_KEY" -H 'Content-Type: application/json' \
-    -d "$(jq -nc --arg e "$1" --arg p "$PASSWORD" '{email:$e,password:$p}')" | jq -r '.access_token // empty'
-}
+# Token assinado com o segredo da stack: o login por senha exige captcha
+# desde que o Turnstile foi ligado (ver mint_user_token em lib.sh).
+login() { mint_user_token "$1"; }
 
 log "criando contas descartáveis"
 USER_ID="$(create_user "$EMAIL")"; OTHER_ID="$(create_user "$OTHER_EMAIL")"
-TOKEN="$(login "$EMAIL")"; OTHER_TOKEN="$(login "$OTHER_EMAIL")"
+TOKEN="$(login "$USER_ID")"; OTHER_TOKEN="$(login "$OTHER_ID")"
 [ -n "$TOKEN" ] && [ -n "$OTHER_TOKEN" ] || die "não foi possível autenticar as contas"
 
 api() { curl -s -H "apikey: $ANON_KEY" -H "Authorization: Bearer $TOKEN" "$@"; }

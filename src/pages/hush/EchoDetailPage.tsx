@@ -1,11 +1,12 @@
 import { ArrowLeft, Clock3, Headphones, ShieldAlert } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { EchoCard } from '@/features/echoes/components/EchoCard'
 import { getEchoReplies, getMyEchoStatus, getPublicEcho } from '@/features/echoes/services/hushApi'
 import type { HushOutletContext } from '@/components/hush/HushLayout'
+import { trackAcquisition } from '@/features/analytics/services/acquisition'
 import { rememberHeard } from '@/features/echoes/previewGate'
 import { useAuth } from '@/hooks/useAuth'
 import { usePageMeta } from '@/hooks/usePageMeta'
@@ -47,6 +48,12 @@ export default function EchoDetailPage() {
   })
 
   const visitante = !loadingUser && !user
+
+  useEffect(() => {
+    // O link compartilhado é a porta de entrada mais importante do produto:
+    // sem medir aqui, não dá para saber se o card do WhatsApp converte.
+    if (visitante) trackAcquisition('shared_echo_view', echoId)
+  }, [visitante, echoId])
 
   // Publicar deixou de significar "no ar": o Echo nasce em análise. Sem esta
   // consulta, quem acabou de publicar cai direto em "Echo não disponível".
@@ -113,7 +120,10 @@ export default function EchoDetailPage() {
         echo={query.data}
         active={active}
         guest={visitante}
-        onAudioStarted={() => { setActive(true); if (visitante) rememberHeard(query.data!.id) }}
+        onAudioStarted={() => {
+          setActive(true)
+          if (visitante) { rememberHeard(query.data!.id); trackAcquisition('shared_echo_play', echoId) }
+        }}
         onReply={(echo) => outlet?.openCreate(echo.id) ?? navigate('/app/echoes')}
         onFollow={(echo) => echo.voice_handle && navigate(`/v/${echo.voice_handle.replace('@', '')}`)}
         onGuestAction={() => navigate('/auth')}

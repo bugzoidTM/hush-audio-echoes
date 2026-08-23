@@ -8,7 +8,7 @@ import { usePageMeta } from '@/hooks/usePageMeta'
  * ninguém deveria precisar de conta para ler os termos aos quais será
  * submetido, nem a política de privacidade antes de decidir se entra.
  */
-export function LegalLayout({ title, updatedAt, children }: { title: string; updatedAt: string; children: ReactNode }) {
+export function LegalLayout({ title, updatedAt, version, children }: { title: string; updatedAt: string; version?: string; children: ReactNode }) {
   usePageMeta({ title: `${title} — shhhh`, robots: 'index, follow' })
 
   return (
@@ -27,7 +27,11 @@ export function LegalLayout({ title, updatedAt, children }: { title: string; upd
 
       <header className="mt-8">
         <h1 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-4xl">{title}</h1>
-        <p className="mt-2 text-sm text-slate-500">Última atualização: {updatedAt}</p>
+        {/* A versão aparece porque ela é registrada no aceite: se um dia
+            houver Termos 2.0, dá para saber quem aceitou o quê. */}
+        <p className="mt-2 text-sm text-slate-500">
+          {version ? `Versão ${version} · ` : ''}Última atualização: {updatedAt}
+        </p>
       </header>
 
       <div className="mt-8 space-y-8 text-[15px] leading-relaxed text-slate-700 dark:text-slate-300">{children}</div>

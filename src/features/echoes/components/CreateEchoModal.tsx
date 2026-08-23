@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { createVoice, generateEchoHook, getCategories, getMyVoice, publishEcho, transcribeFinalAudio } from '@/features/echoes/services/hushApi'
 import { suggestVoice } from '@/features/echoes/voiceSuggestion'
+import { trackAcquisitionOnce } from '@/features/analytics/services/acquisition'
 import { canPublishWithProtection, isDiscoveryDurationValid } from '@/features/echoes/services/discoveryPolicy'
 import { localHookFromTranscription } from '@/features/echoes/services/hookText'
 import { prepareAudioForTranscription, voiceProtectionProvider } from '@/features/echoes/services/voiceProtection'
@@ -186,6 +187,7 @@ export function CreateEchoModal({ open, onOpenChange, replyToId }: CreateEchoMod
           identityMode === 'anonymous' ? 'Sua identidade pública não foi vinculada a este Echo.' : null,
         ].filter(Boolean).join(' '),
       })
+      trackAcquisitionOnce('first_publish', result.id)
       resetAndClose()
       navigate(`/e/${result.id}`)
     } catch (error) {

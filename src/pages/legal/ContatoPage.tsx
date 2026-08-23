@@ -34,7 +34,7 @@ export default function ContatoPage() {
 
   if (enviado) {
     return (
-      <LegalLayout title="Mensagem enviada" updatedAt="24 de agosto de 2026">
+      <LegalLayout title="Mensagem enviada" updatedAt="23 de agosto de 2026">
         <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 dark:border-emerald-900 dark:bg-emerald-950/40">
           <CheckCircle2 className="size-8 text-emerald-600 dark:text-emerald-300" />
           <p className="mt-4 font-bold text-slate-950 dark:text-white">Recebemos sua mensagem.</p>
@@ -48,7 +48,7 @@ export default function ContatoPage() {
   }
 
   return (
-    <LegalLayout title="Falar com o shhhh" updatedAt="24 de agosto de 2026">
+    <LegalLayout title="Falar com o shhhh" updatedAt="23 de agosto de 2026">
       <p>
         Este é o canal para exercer seus direitos sobre dados pessoais (acesso, correção, portabilidade,
         eliminação), denunciar conteúdo, resolver problemas de conta ou mandar uma sugestão.

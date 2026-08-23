@@ -29,8 +29,7 @@ EMAIL="shhhh-direitos-$STAMP@example.invalid"
 USER_ID="$(curl -s -X POST "$PUBLIC_SUPABASE_URL/auth/v1/admin/users" \
   -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" -H 'Content-Type: application/json' \
   -d "$(jq -nc --arg e "$EMAIL" --arg p "$PASSWORD" '{email:$e,password:$p,email_confirm:true}')" | jq -r '.id')"
-TOKEN="$(curl -s -X POST "$PUBLIC_SUPABASE_URL/auth/v1/token?grant_type=password" -H "apikey: $ANON_KEY" \
-  -H 'Content-Type: application/json' -d "$(jq -nc --arg e "$EMAIL" --arg p "$PASSWORD" '{email:$e,password:$p}')" | jq -r '.access_token')"
+TOKEN="$(mint_user_token "$USER_ID")"
 [ -n "$TOKEN" ] || die "não foi possível autenticar a conta de teste"
 api() { curl -s -H "apikey: $ANON_KEY" -H "Authorization: Bearer $TOKEN" "$@"; }
 
@@ -84,11 +83,13 @@ RESTOU="$(sql "select
 [ "$RESTOU" = "0|0|0|0" ] && pass "Echoes, Voices, reações e conta de acesso removidos" \
   || fail "sobrou algo após a exclusão (echoes|voices|reacoes|conta): $RESTOU"
 
-LOGIN_DEPOIS="$(curl -s -X POST "$PUBLIC_SUPABASE_URL/auth/v1/token?grant_type=password" -H "apikey: $ANON_KEY" \
-  -H 'Content-Type: application/json' -d "$(jq -nc --arg e "$EMAIL" --arg p "$PASSWORD" '{email:$e,password:$p}')" \
-  | jq -r '.access_token // "sem-acesso"')"
-[ "$LOGIN_DEPOIS" = "sem-acesso" ] && pass "não é mais possível entrar com a conta excluída" \
-  || fail "conta excluída ainda autentica"
+# O login por senha exige captcha desde que o Turnstile foi ligado, então a
+# prova aqui é outra: o token que a conta tinha deixa de valer, porque o usuário
+# não existe mais para o GoTrue.
+SESSAO_DEPOIS="$(curl -s -o /dev/null -w '%{http_code}' "$PUBLIC_SUPABASE_URL/auth/v1/user" \
+  -H "apikey: $ANON_KEY" -H "Authorization: Bearer $TOKEN")"
+[ "$SESSAO_DEPOIS" != "200" ] && pass "a sessão da conta excluída deixou de valer (HTTP $SESSAO_DEPOIS)" \
+  || fail "sessão da conta excluída continua válida"
 
 # A mídia sai na passada seguinte do cron — é o mesmo caminho já testado da
 # expiração, e não um segundo caminho de exclusão de arquivo.

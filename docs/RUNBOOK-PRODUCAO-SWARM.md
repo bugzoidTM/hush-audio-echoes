@@ -373,6 +373,25 @@ ausente até 2026-08-24** — o `notify()` dos workers retorna calado quando o
 arquivo não existe, então nenhum alerta de worker parado ou fila presa chegou a
 ser enviado desde que foram escritos.
 
+## 5.1.8 O captcha vale para cadastro E login
+
+Ligar `GOTRUE_SECURITY_CAPTCHA_ENABLED` protege **os dois** caminhos com a mesma
+variável. Descobrimos quebrando o login em produção: o widget estava só no
+formulário de cadastro, e ninguém mais conseguia entrar.
+
+Três coisas dependem disso e precisam ser lembradas ao mexer em autenticação:
+
+- o widget precisa estar **nos dois formulários** (entrar e cadastrar);
+- **reconfirmação de senha não pode usar `signInWithPassword`** — a exclusão de
+  conta quebrou junto, num fluxo que é obrigação legal. Hoje ela usa
+  `verify_my_password`, que confere o bcrypt direto no `auth.users`, sem captcha
+  e sem criar sessão;
+- os **scripts de verificação não entram mais por senha**: `mint_user_token` em
+  `lib.sh` assina um JWT com o segredo da própria stack. Abrir exceção de
+  captcha para teste enfraqueceria a proteção real.
+
+`scripts/deploy/05` checa que os dois caminhos continuam recusando sem captcha.
+
 ## 5.2 Feature flags
 
 `public.feature_flags` é lida pelo front (`useFeatureFlags`) **e** pelo banco

@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Ban, Clock3, Flag, Loader2, ShieldCheck, ShieldX, UserX } from 'lucide-react'
+import { Activity, AlertTriangle, Ban, Clock3, Flag, Loader2, ShieldCheck, ShieldX, TrendingUp, UserX } from 'lucide-react'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -10,6 +10,7 @@ import { EchoPlayer } from '@/components/hush/EchoPlayer'
 import {
   dismissEchoReports,
   getModerationStats,
+  getAcquisitionFunnel,
   getReviewQueue,
   getWorkerStatus,
   isModerator,
@@ -32,6 +33,24 @@ const reasonLabels: Record<string, string> = {
   self_harm: 'Autoagressão',
   illegal_activity: 'Atividade ilegal',
   other: 'Outro',
+}
+
+const funnelLabels: Record<string, string> = {
+  landing_view: 'Viu a landing',
+  listen_without_account_click: 'Clicou em ouvir sem conta',
+  preview_view: 'Abriu a prévia',
+  preview_play: 'Tocou na prévia',
+  preview_next: 'Pediu outro Echo',
+  preview_gate_reached: 'Chegou ao limite da prévia',
+  shared_echo_view: 'Abriu Echo compartilhado',
+  shared_echo_play: 'Tocou Echo compartilhado',
+  signup_view: 'Abriu o cadastro',
+  signup_completed: 'Criou conta',
+  onboarding_completed: 'Concluiu onboarding',
+  first_discovery_play: 'Primeiro play no Discovery',
+  first_reaction: 'Primeira reação',
+  first_follow: 'Primeiro follow',
+  first_publish: 'Primeiro Echo publicado',
 }
 
 const statusLabels: Record<string, { label: string; className: string }> = {
@@ -58,6 +77,7 @@ export default function Admin() {
   // ela cresce porque ninguém está processando. Sem isto na tela, um dia de
   // Echoes invisíveis passaria por "está calmo hoje".
   const workersQuery = useQuery({ queryKey: ['worker-status'], queryFn: getWorkerStatus, enabled: moderatorQuery.data === true, refetchInterval: 60_000 })
+  const funilQuery = useQuery({ queryKey: ['acquisition-funnel'], queryFn: () => getAcquisitionFunnel(7), enabled: moderatorQuery.data === true })
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['review-queue'] })
@@ -174,6 +194,35 @@ export default function Admin() {
           <AlertTriangle className="mr-2 inline size-4" />
           {stats.stuck_pending} Echo(s) parado(s) em análise há mais de 30 minutos. Isso costuma ser worker de moderação parado — confira o <code>whisper-stt</code> e o cron <code>moderate-pending-echoes.sh</code>.
         </p>
+      )}
+
+      {/* O funil de aquisição fica aqui porque é a pergunta que mais importa
+          agora: das pessoas que ouvem sem conta, quantas criam uma? Sem isto,
+          500 visitantes na prévia seriam invisíveis. */}
+      {funilQuery.data && funilQuery.data.length > 0 && (
+        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-label="Funil de aquisição">
+          <div className="mb-4 flex items-center gap-2">
+            <TrendingUp className="size-4 text-indigo-600 dark:text-indigo-300" />
+            <h2 className="font-bold text-slate-950 dark:text-white">Funil de aquisição · 7 dias</h2>
+          </div>
+          <div className="space-y-1.5">
+            {funilQuery.data.map((etapa) => {
+              const maior = Math.max(...funilQuery.data.map((item) => item.sessoes), 1)
+              return (
+                <div key={etapa.event_type} className="flex items-center gap-3 text-sm">
+                  <span className="w-56 shrink-0 truncate text-slate-600 dark:text-slate-300">{funnelLabels[etapa.event_type] ?? etapa.event_type}</span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                    <div className="h-full rounded-full bg-indigo-500" style={{ width: `${(etapa.sessoes / maior) * 100}%` }} />
+                  </div>
+                  <span className="w-20 shrink-0 text-right font-semibold tabular-nums text-slate-950 dark:text-white">
+                    {etapa.sessoes}
+                    <span className="ml-1 text-xs font-normal text-slate-400">sess.</span>
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </section>
       )}
 
       <Tabs value={scope} onValueChange={(value) => setScope(value as ReviewScope)} className="mb-5">

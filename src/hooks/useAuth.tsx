@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string, captchaToken?: string | null) => Promise<{ error: any }>;
   signUp: (email: string, password: string, username: string, captchaToken?: string | null) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, captchaToken?: string | null) => {
     try {
       // Limpar estado antes de fazer login
       cleanupAuthState();
@@ -92,6 +92,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        // O GoTrue exige captcha também no LOGIN quando
+        // GOTRUE_SECURITY_CAPTCHA_ENABLED está ligado — não só no cadastro.
+        // Sem isto, ligar o Turnstile tranca todo mundo para fora.
+        ...(captchaToken ? { options: { captchaToken } } : {}),
       });
 
       if (error) throw error;

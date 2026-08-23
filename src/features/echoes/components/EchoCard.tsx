@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { VoiceAvatar } from '@/components/hush/VoiceAvatar'
 import { EchoPlayer } from '@/components/hush/EchoPlayer'
 import { trackEchoEvent } from '@/features/analytics/services/analytics'
+import { trackAcquisitionOnce } from '@/features/analytics/services/acquisition'
 import { useTimeLeft } from '@/features/echoes/useTimeLeft'
 import { createReport, setReaction } from '@/features/echoes/services/hushApi'
 import type { EchoReactionType, PublicEcho } from '@/features/echoes/types'
@@ -48,6 +49,7 @@ export function EchoCard({ echo, active, onAudioStarted, onReply, onFollow, gues
     try {
       await setReaction(echo.id, reaction)
       void trackEchoEvent(echo.id, 'reaction')
+      trackAcquisitionOnce('first_reaction', echo.id)
     } catch (error) {
       setSelectedReaction(null)
       toast({ title: 'Não foi possível reagir', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' })

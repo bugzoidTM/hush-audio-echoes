@@ -3,7 +3,7 @@ import { LegalLayout, Secao } from './LegalLayout'
 
 export default function PrivacidadePage() {
   return (
-    <LegalLayout title="Política de Privacidade" updatedAt="24 de agosto de 2026">
+    <LegalLayout title="Política de Privacidade" updatedAt="23 de agosto de 2026" version="1.0">
       <p>
         Esta política descreve quais dados o shhhh coleta, por que, por quanto tempo e como você exerce seus
         direitos. Ela é escrita para ser lida — sem parágrafos genéricos que valeriam para qualquer produto.
@@ -52,7 +52,7 @@ export default function PrivacidadePage() {
 
       <Secao titulo="Por quanto tempo guardamos">
         <ul className="list-disc space-y-2 pl-5">
-          <li><strong>Echo com prazo:</strong> o arquivo de áudio é removido do armazenamento quando expira (1h, 24h ou 7 dias), por rotina automática que roda a cada 15 minutos.</li>
+          <li><strong>Echo com prazo:</strong> o arquivo de áudio é removido do armazenamento quando expira (1h, 6h, 24h ou 7 dias), por rotina automática que roda a cada 15 minutos.</li>
           <li><strong>Echo permanente:</strong> até você apagá-lo ou apagar sua conta.</li>
           <li><strong>Conta:</strong> enquanto existir. Ao excluí-la, os dados listados abaixo são removidos.</li>
           <li><strong>Registros de moderação de casos denunciados:</strong> podem ser conservados mesmo após a exclusão da conta, sem vínculo com você, quando forem necessários para proteger terceiros ou cumprir obrigação legal.</li>

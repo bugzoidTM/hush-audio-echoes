@@ -46,6 +46,29 @@ restart_service() {
   docker service update --force --quiet "${SUPABASE_STACK}_${service}" >/dev/null
 }
 
+# Emite um token de usuário assinado com o segredo da própria stack.
+#
+# Os scripts de verificação entravam por senha (`/auth/v1/token`). Com o
+# Turnstile ligado, o GoTrue passou a exigir captcha TAMBÉM no login — não só no
+# cadastro — e todos eles pararam de autenticar. Em vez de abrir exceção no
+# captcha (que enfraqueceria a proteção real), a verificação assina o próprio
+# token: ela roda no host, com acesso ao segredo, e não precisa fingir ser um
+# navegador.
+mint_user_token() {
+  local user_id="$1" segredo agora expira cabecalho payload dados assinatura
+  segredo="$(service_env auth GOTRUE_JWT_SECRET)"
+  [ -n "$segredo" ] || die "GOTRUE_JWT_SECRET não encontrado no serviço auth"
+  agora="$(date +%s)"; expira="$((agora + 3600))"
+
+  b64() { openssl base64 -e -A | tr '+/' '-_' | tr -d '='; }
+  cabecalho="$(printf '{"alg":"HS256","typ":"JWT"}' | b64)"
+  payload="$(printf '{"sub":"%s","role":"authenticated","aud":"authenticated","iat":%s,"exp":%s}' \
+    "$user_id" "$agora" "$expira" | b64)"
+  dados="${cabecalho}.${payload}"
+  assinatura="$(printf '%s' "$dados" | openssl dgst -binary -sha256 -hmac "$segredo" | b64)"
+  printf '%s.%s' "$dados" "$assinatura"
+}
+
 # Lê uma variável de ambiente já configurada em um serviço do stack.
 service_env() {
   local service="$1" key="$2"

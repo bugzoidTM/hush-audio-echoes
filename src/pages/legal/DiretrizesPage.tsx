@@ -2,7 +2,7 @@ import { LegalLayout, Secao } from './LegalLayout'
 
 export default function DiretrizesPage() {
   return (
-    <LegalLayout title="Diretrizes da Comunidade" updatedAt="24 de agosto de 2026">
+    <LegalLayout title="Diretrizes da Comunidade" updatedAt="23 de agosto de 2026" version="1.0">
       <p>
         O shhhh existe para que alguém consiga dizer em voz alta o que não diria em outro lugar. Isso só funciona
         se as pessoas se sentirem seguras. Estas diretrizes valem para todo Echo, resposta, Voice e bio.

@@ -140,12 +140,19 @@ export function EchoCard({ echo, active, onAudioStarted, onReply, onFollow }: Ec
           </div>
         </div>
 
-        {echo.description && (
+        {/* Transcrição é a do servidor, feita a partir do áudio publicado. Antes
+            este bloco mostrava echo.description: descrição não é transcrição, e
+            a interface tratava as duas como a mesma coisa. */}
+        {echo.transcription && (
           <div className="mt-3">
             <Button variant="link" size="sm" className="h-auto p-0 text-xs text-slate-500" onClick={() => setShowTranscript((visible) => !visible)}>
               {showTranscript ? 'Ocultar transcrição' : 'Mostrar transcrição'}
             </Button>
-            {showTranscript && <p className="mt-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">{echo.description}</p>}
+            {showTranscript && (
+              <p className="mt-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                {echo.transcription}
+              </p>
+            )}
           </div>
         )}
       </div>

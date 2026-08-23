@@ -15,24 +15,42 @@ interface EchoPlayerProps {
 export function EchoPlayer({ echoId, audioUrl, duration, onStarted, active = true }: EchoPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const milestones = useRef(new Set<number>())
+  // Progresso e início ficam em ref porque quem decide o skip é o efeito de
+  // saída do card, que não pode depender de re-render para ver o valor atual.
+  const progressRef = useRef(0)
+  const startedRef = useRef(false)
+  const skipTracked = useRef(false)
   const [playing, setPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   // Sem isto o play falho ficava mudo: o clique não fazia nada visível.
   const [playbackError, setPlaybackError] = useState<string | null>(null)
 
+  const effectiveDuration = Number.isFinite(duration) && duration > 0 ? duration : 1
+  const percentage = Math.min(100, (currentTime / effectiveDuration) * 100)
+
   useEffect(() => {
-    if (!active && audioRef.current && !audioRef.current.paused) {
+    if (active) {
+      // Voltar ao card permite contar um novo skip se a pessoa sair de novo.
+      skipTracked.current = false
+      return
+    }
+    if (audioRef.current && !audioRef.current.paused) {
       audioRef.current.pause()
       setPlaying(false)
     }
-  }, [active])
+    // Deslizar para o próximo Echo antes de 70% é skip. O ranking já pesava
+    // -0.20 por taxa de skip, mas o evento nunca era emitido: o feed só pausava
+    // o áudio, então o sinal negativo mais importante do Discovery chegava
+    // sempre zerado.
+    if (startedRef.current && !skipTracked.current && progressRef.current < 0.7) {
+      skipTracked.current = true
+      void trackEchoEvent(echoId, 'skip', progressRef.current * effectiveDuration)
+    }
+  }, [active, echoId, effectiveDuration])
 
   useEffect(() => () => {
     audioRef.current?.pause()
   }, [])
-
-  const effectiveDuration = Number.isFinite(duration) && duration > 0 ? duration : 1
-  const percentage = Math.min(100, (currentTime / effectiveDuration) * 100)
 
   const togglePlayback = async () => {
     const audio = audioRef.current
@@ -43,6 +61,7 @@ export function EchoPlayer({ echoId, audioUrl, duration, onStarted, active = tru
         await audio.play()
         onStarted?.()
         setPlaying(true)
+        startedRef.current = true
         if (currentTime > 0) void trackEchoEvent(echoId, 'replay', currentTime)
         else void trackEchoEvent(echoId, 'play_start', 0)
       } catch {
@@ -61,6 +80,7 @@ export function EchoPlayer({ echoId, audioUrl, duration, onStarted, active = tru
     const position = audio.currentTime
     setCurrentTime(position)
     const progress = position / effectiveDuration
+    progressRef.current = progress
     const checkpoints: Array<[number, 'play_25' | 'play_50' | 'play_70']> = [
       [0.25, 'play_25'],
       [0.5, 'play_50'],
@@ -97,6 +117,7 @@ export function EchoPlayer({ echoId, audioUrl, duration, onStarted, active = tru
         onEnded={() => {
           setPlaying(false)
           setCurrentTime(effectiveDuration)
+          progressRef.current = 1
           void trackEchoEvent(echoId, 'play_complete', effectiveDuration)
         }}
       />

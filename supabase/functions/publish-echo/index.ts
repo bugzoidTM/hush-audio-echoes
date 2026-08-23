@@ -30,16 +30,6 @@ function expirationFromChoice(choice: string): string | null {
   return choice === 'permanent' ? null : new Date(now + durationByChoice[choice]).toISOString()
 }
 
-function automatedModeration(transcription: string | null): 'approved' | 'review_required' | 'rejected' {
-  if (!transcription) return 'approved'
-  const normalized = transcription.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-  const highRisk = /\b(telefone|endereco|cpf|rg|numero do cartao|nome completo de)\b/
-  const severeRisk = /\b(como fabricar bomba|exploracao sexual infantil|conteudo sexual com menor)\b/
-  if (severeRisk.test(normalized)) return 'rejected'
-  if (highRisk.test(normalized)) return 'review_required'
-  return 'approved'
-}
-
 function extensionFromMimeType(mimeType: string): string {
   if (mimeType === 'audio/ogg') return 'ogg'
   if (mimeType === 'audio/wav') return 'wav'
@@ -105,6 +95,7 @@ serve(async (request) => {
   const parentEchoId = form.get('parent_echo_id')
   const title = toOptionalText(form.get('title'), 140)
   const description = toOptionalText(form.get('description'), 500)
+  // Texto vindo do navegador: serve de rascunho/UX, jamais de fonte de confiança.
   const transcription = toOptionalText(form.get('transcription'), 10000)
 
   if (!(audio instanceof File) || audio.size === 0 || !allowedMimeTypes.has(audio.type)) {
@@ -226,7 +217,10 @@ serve(async (request) => {
   // O endereço público vem de SUPABASE_PUBLIC_URL.
   const publicBase = (Deno.env.get('SUPABASE_PUBLIC_URL') ?? supabaseUrl).replace(/\/+$/, '')
   const audioUrl = `${publicBase}/storage/v1/object/public/echo-audio/${storagePath}`
-  const moderationStatus = automatedModeration(transcription)
+  // Moderação NUNCA depende do que o navegador manda. O Echo nasce 'pending' e
+  // invisível no Discovery; quem aprova é o worker server-side, que transcreve o
+  // áudio publicado (scripts/deploy/moderate-pending-echoes.sh). Cliente
+  // modificado que omita ou falsifique a transcrição não muda nada disso.
   const { data: echo, error: insertError } = await admin
     .from('audio_posts')
     .insert({
@@ -241,12 +235,15 @@ serve(async (request) => {
       duration: Math.round(duration),
       title,
       description,
-      transcription,
+      client_transcription: transcription,
+      transcription: null,
       is_anonymous: identityMode === 'anonymous',
       voice_protection_enabled: protectionEnabled,
       voice_protection_preset: protectionEnabled ? protectionPreset as ProtectionPreset : null,
       expires_at: expirationFromChoice(expirationChoice as string),
-      moderation_status: moderationStatus,
+      moderation_status: 'pending',
+      moderation_source: null,
+      moderation_attempts: 0,
       status: 'active',
       visibility: 'public',
       published_at: new Date().toISOString(),
@@ -283,6 +280,7 @@ serve(async (request) => {
     id: echo.id,
     moderation_status: echo.moderation_status,
     created_at: echo.created_at,
+    message: 'Seu Echo está em análise e aparecerá no Discovery assim que for aprovado.',
   }), {
     status: 201,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -29,6 +29,8 @@ export interface PublicEcho {
   category_name: string | null
   title: string | null
   description: string | null
+  /** Transcrição feita no servidor a partir do áudio publicado. Nunca é a descrição. */
+  transcription: string | null
   audio_url: string
   duration: number
   expires_at: string | null
@@ -37,8 +39,18 @@ export interface PublicEcho {
   reaction_counts: Partial<Record<EchoReactionType, number>>
   reply_count: number
   created_at: string
-  next_cursor: string
+  next_cursor: string | null
 }
+
+export type FeatureFlagKey =
+  | 'SHHHH_V2_ENABLED'
+  | 'PROTECT_VOICE_ENABLED'
+  | 'DISCOVERY_V2_ENABLED'
+  | 'COMMUNITIES_ENABLED'
+  | 'MONETIZATION_ENABLED'
+  | 'SERVER_MODERATION_ENABLED'
+
+export type FeatureFlags = Partial<Record<FeatureFlagKey, boolean>>
 
 export interface EchoCategory {
   id: string

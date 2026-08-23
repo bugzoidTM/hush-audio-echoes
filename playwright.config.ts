@@ -11,6 +11,13 @@ export default defineConfig({
   },
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1 --port 4173',
+    // O cliente Supabase não tem mais endereço embutido: sem estas variáveis o
+    // dev server sobe e o app abre em branco, e o e2e falha sem dizer por quê.
+    // Valores fictícios de propósito — a landing não fala com o backend.
+    env: {
+      VITE_SUPABASE_URL: 'https://supabase.invalido.test',
+      VITE_SUPABASE_ANON_KEY: 'chave-anon-de-teste',
+    },
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: true,
     timeout: 30_000,

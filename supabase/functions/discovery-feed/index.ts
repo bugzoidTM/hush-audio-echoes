@@ -6,10 +6,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function parseLimit(value: string | null): number {
   const parsed = Number(value ?? '12')
   if (!Number.isInteger(parsed)) return 12
   return Math.min(Math.max(parsed, 1), 15)
+}
+
+// Paginação por conjunto já servido. O cursor por published_at era instável sob
+// ORDER BY score: com o ranking mudando entre requisições, Echoes eram pulados
+// ou repetidos. Aqui cada página é o topo do ranking do que ainda não foi
+// entregue, então não há duplicata nem salto — e as janelas de diversidade
+// passam a valer por página, em vez de travar o feed em ~12 Echoes.
+function parseExcludedIds(value: string | null): string[] {
+  if (!value) return []
+  return value
+    .split(',')
+    .map((id) => id.trim())
+    .filter((id) => uuidPattern.test(id))
+    .slice(0, 300)
 }
 
 serve(async (request) => {
@@ -50,14 +66,14 @@ serve(async (request) => {
   }
 
   const url = new URL(request.url)
-  const cursor = url.searchParams.get('cursor')
   const category = url.searchParams.get('category')
-  const parsedCursor = cursor && !Number.isNaN(Date.parse(cursor)) ? cursor : null
+  const limit = parseLimit(url.searchParams.get('limit'))
+  const excluded = parseExcludedIds(url.searchParams.get('exclude'))
 
   const { data, error } = await client.rpc('get_discovery_feed', {
-    p_cursor: parsedCursor,
-    p_limit: parseLimit(url.searchParams.get('limit')),
+    p_limit: limit,
     p_category_slug: category || null,
+    p_exclude_ids: excluded.length ? excluded : null,
   })
 
   if (error) {
@@ -69,10 +85,12 @@ serve(async (request) => {
   }
 
   const items = data ?? []
+  // next_cursor sobrevive como chave de depuração/ordem da última linha; quem
+  // pagina de fato é `exclude`. has_more evita a página vazia final.
   const finalCursor = items.length > 0 ? items[items.length - 1].next_cursor : null
 
   // O resultado de get_discovery_feed é intencionalmente uma whitelist sem owner_user_id.
-  return new Response(JSON.stringify({ items, next_cursor: finalCursor }), {
+  return new Response(JSON.stringify({ items, next_cursor: finalCursor, has_more: items.length >= limit }), {
     headers: {
       ...corsHeaders,
       'Cache-Control': 'private, max-age=30',

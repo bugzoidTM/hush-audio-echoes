@@ -34,3 +34,4 @@ dist-ssr
 
 # Gerado pelo `deno check` das Edge Functions
 deno.lock
+test-results/

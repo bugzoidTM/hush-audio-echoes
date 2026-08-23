@@ -171,9 +171,14 @@ export function CreateEchoModal({ open, onOpenChange, replyToId }: CreateEchoMod
         protectedAudio,
         replyToId: replyToId ?? null,
       })
+      // Nenhum Echo nasce aprovado: a moderação server-side transcreve o áudio
+      // antes de liberar. Prometer "publicado" aqui seria mentira na tela.
       toast({
-        title: result.moderation_status === 'approved' ? 'Echo publicado.' : 'Echo enviado para revisão.',
-        description: identityMode === 'anonymous' ? 'Sua identidade pública não foi vinculada a este Echo.' : undefined,
+        title: result.moderation_status === 'approved' ? 'Echo publicado.' : 'Echo enviado para análise.',
+        description: [
+          result.message ?? 'Ele aparecerá no Discovery assim que for aprovado.',
+          identityMode === 'anonymous' ? 'Sua identidade pública não foi vinculada a este Echo.' : null,
+        ].filter(Boolean).join(' '),
       })
       resetAndClose()
       navigate(`/e/${result.id}`)

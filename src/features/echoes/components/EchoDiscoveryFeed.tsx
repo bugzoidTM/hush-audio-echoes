@@ -1,12 +1,11 @@
 import { Loader2, Mic, SearchX, SlidersHorizontal } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { trackEchoEvent } from '@/features/analytics/services/analytics'
 import { getCategories, getDiscoveryFeed } from '@/features/echoes/services/hushApi'
-import type { PublicEcho } from '@/features/echoes/types'
 import { EchoCard } from './EchoCard'
 
 interface EchoDiscoveryFeedProps {
@@ -18,17 +17,35 @@ export function EchoDiscoveryFeed({ onCreate }: EchoDiscoveryFeedProps) {
   const [category, setCategory] = useState<string | null>(null)
   const [activeEchoId, setActiveEchoId] = useState<string | null>(null)
   const viewedEchoes = useRef(new Set<string>())
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const categoriesQuery = useQuery({ queryKey: ['echo-categories'], queryFn: getCategories, staleTime: 60 * 60 * 1000 })
-  const feedQuery = useQuery({
+
+  // Paginação pelo conjunto já servido: cada página manda os ids que o usuário
+  // já recebeu, e o servidor devolve o topo do ranking do que sobrou. Com
+  // cursor por published_at o feed pulava e repetia Echoes, porque o score muda
+  // entre requisições.
+  const feedQuery = useInfiniteQuery({
     queryKey: ['discovery-feed', category],
-    queryFn: () => getDiscoveryFeed(null, category),
+    initialPageParam: [] as string[],
+    queryFn: ({ pageParam }) => getDiscoveryFeed(category, pageParam),
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.has_more ? allPages.flatMap((page) => page.items.map((item) => item.id)) : undefined,
     staleTime: 30_000,
   })
-  const echoes = useMemo(() => feedQuery.data?.items ?? [], [feedQuery.data?.items])
+
+  const echoes = useMemo(
+    () => feedQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [feedQuery.data],
+  )
+
+  const { fetchNextPage, hasNextPage, isFetchingNextPage } = feedQuery
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) void fetchNextPage()
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage])
 
   useEffect(() => {
     if (!echoes.length) return
-    setActiveEchoId((current) => current && echoes.some((echo) => echo.id === current) ? current : echoes[0].id)
+    setActiveEchoId((current) => (current && echoes.some((echo) => echo.id === current) ? current : echoes[0].id))
   }, [echoes])
 
   useEffect(() => {
@@ -51,6 +68,19 @@ export function EchoDiscoveryFeed({ onCreate }: EchoDiscoveryFeedProps) {
     cards.forEach((card) => observer.observe(card))
     return () => observer.disconnect()
   }, [echoes])
+
+  // Sentinela do fim da lista: busca a próxima página um Echo antes do fim,
+  // para o scroll não travar esperando a resposta.
+  useEffect(() => {
+    const sentinel = loadMoreRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => entries.some((entry) => entry.isIntersecting) && loadMore(),
+      { rootMargin: '600px 0px' },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [loadMore, echoes.length])
 
   if (feedQuery.isPending) {
     return <FeedLoading />
@@ -75,19 +105,30 @@ export function EchoDiscoveryFeed({ onCreate }: EchoDiscoveryFeedProps) {
       </header>
 
       {echoes.length ? (
-        <section className="snap-y snap-mandatory" aria-live="polite">
-          {echoes.map((echo) => (
-            <div key={echo.id} data-echo-id={echo.id}>
-              <EchoCard
-                echo={echo}
-                active={activeEchoId === echo.id}
-                onAudioStarted={() => setActiveEchoId(echo.id)}
-                onReply={(current) => onCreate(current.id)}
-                onFollow={(current) => current.voice_handle && navigate(`/v/${encodeURIComponent(current.voice_handle.replace('@', ''))}`)}
-              />
-            </div>
-          ))}
-        </section>
+        <>
+          <section className="snap-y snap-mandatory" aria-live="polite">
+            {echoes.map((echo) => (
+              <div key={echo.id} data-echo-id={echo.id}>
+                <EchoCard
+                  echo={echo}
+                  active={activeEchoId === echo.id}
+                  onAudioStarted={() => setActiveEchoId(echo.id)}
+                  onReply={(current) => onCreate(current.id)}
+                  onFollow={(current) => current.voice_handle && navigate(`/v/${encodeURIComponent(current.voice_handle.replace('@', ''))}`)}
+                />
+              </div>
+            ))}
+          </section>
+          <div ref={loadMoreRef} className="grid place-items-center py-8 text-sm text-slate-500">
+            {isFetchingNextPage ? (
+              <Loader2 className="size-5 animate-spin text-indigo-500" />
+            ) : hasNextPage ? (
+              <Button variant="outline" className="rounded-xl" onClick={loadMore}>Carregar mais</Button>
+            ) : (
+              <p>Você chegou ao fim por enquanto. Volte mais tarde para ouvir novidades.</p>
+            )}
+          </div>
+        </>
       ) : (
         <section className="grid min-h-[65dvh] place-items-center px-6 text-center"><div><Mic className="mx-auto size-10 text-indigo-500" /><h1 className="mt-4 text-xl font-bold">Seja o primeiro a contar</h1><p className="mt-2 text-sm text-slate-500">Ainda não há Echoes nesta categoria. Sua história pode abrir a conversa.</p><Button className="mt-5 rounded-xl" onClick={() => onCreate()}>Criar Echo</Button></div></section>
       )}

@@ -4,6 +4,7 @@ import type {
   EchoDraft,
   EchoEventType,
   EchoReactionType,
+  FeatureFlags,
   PublicCommunity,
   PublicEcho,
   PublicVoice,
@@ -54,13 +55,34 @@ export async function getCategories(): Promise<EchoCategory[]> {
   return requestJson<EchoCategory[]>('/rest/v1/categories?select=id,slug,name,position&order=position.asc')
 }
 
-export async function getDiscoveryFeed(cursor?: string | null, category?: string | null): Promise<{ items: PublicEcho[]; next_cursor: string | null }> {
+export interface DiscoveryPage {
+  items: PublicEcho[]
+  next_cursor: string | null
+  has_more: boolean
+}
+
+/**
+ * Página do Discovery. A paginação é pelo conjunto já servido (`excludeIds`), e
+ * não por cursor de tempo: o ranking por score muda entre requisições, então um
+ * cursor por published_at pulava e repetia Echoes. O servidor limita a lista a
+ * 300 ids; enviar os mais recentes basta porque quem já foi ouvido até o fim
+ * também é filtrado por 7 dias no próprio SQL.
+ */
+export async function getDiscoveryFeed(
+  category?: string | null,
+  excludeIds: string[] = [],
+): Promise<DiscoveryPage> {
   const params = new URLSearchParams({ limit: '12' })
-  if (cursor) params.set('cursor', cursor)
   if (category) params.set('category', category)
-  const response = await requestJson<{ items: PublicEcho[]; next_cursor: string | null }>(`/functions/v1/discovery-feed?${params.toString()}`)
+  if (excludeIds.length) params.set('exclude', excludeIds.slice(-300).join(','))
+  const response = await requestJson<DiscoveryPage>(`/functions/v1/discovery-feed?${params.toString()}`)
   assertAnonymousPayloadSafety(response.items)
   return response
+}
+
+export async function getFeatureFlags(): Promise<FeatureFlags> {
+  const rows = await requestJson<Array<{ key: string; enabled: boolean }>>('/rest/v1/feature_flags?select=key,enabled')
+  return Object.fromEntries(rows.map((row) => [row.key, row.enabled])) as FeatureFlags
 }
 
 export async function getPublicEcho(echoId: string): Promise<PublicEcho | null> {
@@ -72,6 +94,50 @@ export async function getPublicEcho(echoId: string): Promise<PublicEcho | null> 
   const echo = rows[0] ?? null
   if (echo) assertAnonymousPayloadSafety([echo])
   return echo
+}
+
+export async function getEchoReplies(echoId: string): Promise<PublicEcho[]> {
+  const rows = await requestJson<PublicEcho[]>('/rest/v1/rpc/get_echo_replies', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_echo_id: echoId, p_limit: 50 }),
+  })
+  assertAnonymousPayloadSafety(rows)
+  return rows
+}
+
+/** Estado de moderação do próprio Echo: publicar não significa mais estar no ar. */
+export async function getMyEchoStatus(echoId: string): Promise<{ id: string; moderation_status: string; moderated_at: string | null } | null> {
+  const rows = await requestJson<Array<{ id: string; moderation_status: string; moderated_at: string | null }>>('/rest/v1/rpc/get_my_echo_status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_echo_id: echoId }),
+  })
+  return rows[0] ?? null
+}
+
+// audio_posts não aceita mais UPDATE/DELETE direto: um PATCH no PostgREST
+// trocava moderation_status, visibility, voice_id e audio_url. Só estes dois
+// caminhos, campo a campo, continuam disponíveis para o dono.
+export async function updateEchoMetadata(echoId: string, input: { title?: string | null; description?: string | null; categoryId?: string | null }): Promise<void> {
+  await requestJson('/rest/v1/rpc/update_echo_metadata', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      p_echo_id: echoId,
+      p_title: input.title ?? null,
+      p_description: input.description ?? null,
+      p_category_id: input.categoryId ?? null,
+    }),
+  })
+}
+
+export async function deleteEcho(echoId: string): Promise<void> {
+  await requestJson('/rest/v1/rpc/delete_echo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_echo_id: echoId }),
+  })
 }
 
 export async function getMyVoicesFeed(cursor?: string | null): Promise<PublicEcho[]> {
@@ -101,7 +167,7 @@ export async function generateEchoHook(transcription: string): Promise<{ hook: s
   return { hook: result.hook, source: result.source ?? 'local' }
 }
 
-export async function publishEcho(draft: EchoDraft): Promise<{ id: string; moderation_status: string }> {
+export async function publishEcho(draft: EchoDraft): Promise<{ id: string; moderation_status: string; message?: string }> {
   const form = new FormData()
   const media = draft.voiceProtectionEnabled ? draft.protectedAudio?.blob : draft.audio
   if (!media) {
@@ -122,7 +188,7 @@ export async function publishEcho(draft: EchoDraft): Promise<{ id: string; moder
   if (draft.description.trim()) form.set('description', draft.description.trim())
   if (draft.transcription?.trim()) form.set('transcription', draft.transcription.trim())
 
-  return requestJson<{ id: string; moderation_status: string }>('/functions/v1/publish-echo', {
+  return requestJson<{ id: string; moderation_status: string; message?: string }>('/functions/v1/publish-echo', {
     method: 'POST',
     body: form,
   })
@@ -310,7 +376,8 @@ export async function joinCommunity(communityId: string): Promise<void> {
   await requestJson('/rest/v1/community_members', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify({ community_id: communityId, user_id: userData.user.id, status: 'active' }),
+    // role explícito: a RLS só aceita 'member' vindo do próprio usuário.
+    body: JSON.stringify({ community_id: communityId, user_id: userData.user.id, role: 'member', status: 'active' }),
   })
 }
 

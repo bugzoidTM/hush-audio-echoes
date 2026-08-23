@@ -48,9 +48,16 @@ serve(async (request) => {
     return new Response(JSON.stringify({ error: 'Permissão de moderação obrigatória.' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 
-  const update = body.decision === 'rejected'
-    ? { moderation_status: body.decision, status: 'deleted' }
-    : { moderation_status: body.decision }
+  // Decisão humana também deixa rastro: sem moderation_source/moderated_at não
+  // dá para distinguir depois o que foi analisado por gente do que passou pelo
+  // worker automático — e a fila da revisão humana some sem registro.
+  const update = {
+    moderation_status: body.decision,
+    moderation_source: 'human',
+    moderated_at: new Date().toISOString(),
+    moderation_note: body.note ? body.note.slice(0, 500) : null,
+    ...(body.decision === 'rejected' ? { status: 'deleted', expires_at: new Date().toISOString() } : {}),
+  }
   const { error } = await admin.from('audio_posts').update(update).eq('id', body.echo_id)
   if (error) {
     console.error('moderate-echo failed', error.message)

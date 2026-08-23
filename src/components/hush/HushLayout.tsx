@@ -6,16 +6,19 @@ import { CreateEchoModal } from '@/features/echoes/components/CreateEchoModal'
 import { trackAppOpen } from '@/features/analytics/services/analytics'
 import { isOnboardingComplete } from '@/features/echoes/services/hushApi'
 import { useAuth } from '@/hooks/useAuth'
+import { useFeatureFlags } from '@/hooks/useFeatureFlags'
 
 export interface HushOutletContext {
   openCreate: (replyToId?: string) => void
 }
 
+// A navegação também consulta a flag: com Communities congelada, o item some
+// da barra em vez de levar a uma rota que redireciona de volta.
 const navItems = [
-  { to: '/app/echoes', label: 'Echoes', icon: Compass },
-  { to: '/app/voices', label: 'My Voices', icon: Headphones },
-  { to: '/app/communities', label: 'Communities', icon: UsersRound },
-  { to: '/app/profile', label: 'Profile', icon: UserRound },
+  { to: '/app/echoes', label: 'Echoes', icon: Compass, flag: null },
+  { to: '/app/voices', label: 'My Voices', icon: Headphones, flag: null },
+  { to: '/app/communities', label: 'Communities', icon: UsersRound, flag: 'COMMUNITIES_ENABLED' as const },
+  { to: '/app/profile', label: 'Profile', icon: UserRound, flag: null },
 ]
 
 export function HushLayout() {
@@ -25,6 +28,8 @@ export function HushLayout() {
   const [createOpen, setCreateOpen] = useState(false)
   const [replyToId, setReplyToId] = useState<string | null>(null)
   const [checkingOnboarding, setCheckingOnboarding] = useState(true)
+  const { flags } = useFeatureFlags()
+  const visibleNavItems = navItems.filter((item) => !item.flag || flags[item.flag] === true)
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth', { replace: true })
@@ -72,10 +77,10 @@ export function HushLayout() {
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95" aria-label="Navegação principal">
-        <div className="mx-auto grid max-w-3xl grid-cols-5 items-end px-2">
-          {navItems.slice(0, 2).map(({ to, label, icon: Icon }) => <NavItem key={to} to={to} label={label} icon={Icon} />)}
+        <div className={`mx-auto grid max-w-3xl items-end px-2 ${visibleNavItems.length >= 4 ? 'grid-cols-5' : 'grid-cols-4'}`}>
+          {visibleNavItems.slice(0, 2).map(({ to, label, icon: Icon }) => <NavItem key={to} to={to} label={label} icon={Icon} />)}
           <Button className="mx-auto -mt-7 grid size-14 place-items-center rounded-2xl bg-indigo-600 text-white shadow-xl shadow-indigo-950/30 transition-transform duration-150 hover:bg-indigo-500 active:scale-95" onClick={() => openCreate()} aria-label="Criar Echo"><Plus className="size-6" /></Button>
-          {navItems.slice(2).map(({ to, label, icon: Icon }) => <NavItem key={to} to={to} label={label} icon={Icon} />)}
+          {visibleNavItems.slice(2).map(({ to, label, icon: Icon }) => <NavItem key={to} to={to} label={label} icon={Icon} />)}
         </div>
       </nav>
 

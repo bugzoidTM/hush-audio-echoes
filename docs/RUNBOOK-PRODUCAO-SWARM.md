@@ -44,11 +44,28 @@ e valida os dois artefatos. Só siga adiante se o script terminar com sucesso.
 
 ```bash
 scripts/deploy/02-apply-migration.sh
+scripts/deploy/02-apply-migration.sh supabase/migrations/20260823120000_shhhh_authorization_and_moderation_hardening.sql
 ```
 
 Aplica `supabase/migrations/20260821190000_shhhh_echoes_voices_communities.sql`
 com `ON_ERROR_STOP=1` (a migração é transacional) e confere tabelas, funções
 RPC, categorias e o bucket `echo-audio`. **Não prossiga se a verificação falhar.**
+
+A segunda migração (2026-08-23) fecha três buracos de autorização e é
+obrigatória antes de qualquer beta aberto:
+
+- `audio_posts` não aceita mais `INSERT/UPDATE/DELETE` direto — um `PATCH` no
+  PostgREST trocava `moderation_status`, `visibility`, `voice_id` e `audio_url`.
+  O dono passa por `update_echo_metadata()` e `delete_echo()`, campo a campo.
+- `community_members` não aceita mais entrar com qualquer papel em qualquer
+  Community: era escalonamento de privilégio direto (bastava inserir-se como
+  `creator`). Não existe política de `UPDATE`: promoção de papel não passa pela
+  API pública.
+- A moderação deixa de acreditar no cliente (veja §5.1).
+
+Ela também recoloca na fila os Echoes já aprovados pelo caminho antigo
+(`moderation_source = 'legacy_client'`): eles somem do Discovery até o worker
+transcrever o áudio. Rode o worker logo depois, ou espere o cron de 2 min.
 
 ## 4. Edge Functions
 
@@ -91,19 +108,82 @@ Os limites do worker ficam em `supabase/functions/main/index.ts` (memória, temp
 de parede e tempo de CPU). Os padrões do pacote self-hosted — 150 MB, 60 s e o
 limite de CPU implícito — matavam a transcrição com `WorkerRequestCancelled`.
 
-## 5. Expiração periódica de mídia
+## 5. Manutenção periódica: expiração de mídia e moderação
 
 ```bash
-sudo install -d -m 700 /usr/local/lib/shhhh
-sudo install -m 700 scripts/deploy/cleanup-expired-audios.sh /usr/local/lib/shhhh/
-sudo /usr/local/lib/shhhh/cleanup-expired-audios.sh
-sudo crontab -l | { cat; echo '*/15 * * * * /usr/local/lib/shhhh/cleanup-expired-audios.sh >> /var/log/shhhh-cleanup.log 2>&1'; } | sudo crontab -
+scripts/deploy/06-install-cron.sh
 ```
 
-O script lê a chave server-side do próprio serviço do Swarm, em memória; o
+Instala os dois jobs em `/usr/local/lib/shhhh` (fora do checkout) e escreve o
+crontab:
+
+| job | intervalo | log |
+| --- | --- | --- |
+| `cleanup-expired-audios.sh` | 15 min | `/var/log/shhhh-cleanup.log` |
+| `moderate-pending-echoes.sh` | 2 min | `/var/log/shhhh-moderation.log` |
+
+Os scripts leem a chave server-side do próprio serviço do Swarm, em memória; o
 crontab não contém credencial alguma.
 
-## 5.1 Correções de infraestrutura necessárias uma única vez
+## 5.1 Moderação server-side (obrigatória)
+
+Desde a migração `20260823120000`, **nenhum Echo nasce aprovado**. A moderação
+automática lia a transcrição que o navegador enviava — bastava não enviar
+transcrição para publicar sem análise nenhuma. Agora:
+
+1. `publish-echo` grava o Echo com `moderation_status = 'pending'` e guarda o
+   texto do navegador em `client_transcription` (sinal de UX, nunca de
+   confiança). `transcription` só recebe texto vindo do servidor.
+2. O Echo fica invisível: `get_discovery_feed`, `get_public_echo` e
+   `get_echo_replies` só devolvem `approved`. O autor vê o estado pelo
+   `get_my_echo_status` (a tela `/e/:id` mostra "em análise" e se atualiza
+   sozinha).
+3. O worker `moderate-pending-echoes.sh` baixa o áudio publicado, normaliza o
+   pico (o VAD do whisper devolve texto vazio em áudio baixo), transcreve no
+   `whisper-stt` da VPS e chama `apply_server_moderation`.
+4. `classify_transcription` decide: `approved`, `review_required` (dado
+   pessoal, risco à vida, assédio) ou `rejected` (abuso infantil, ameaça de
+   morte, instrução para explosivo).
+
+Fail closed em todo caminho: transcrição vazia conta tentativa e, na terceira,
+o Echo vai para `review_required` (fila humana) — nunca para `approved`. Se a
+fila envelhecer 30 minutos, o worker avisa no Telegram (token em
+`/root/.shhhh-telegram-token`).
+
+**Por que no host e não em Edge Function:** o whisper roda em CPU e leva de
+dezenas de segundos a minutos por Echo, enquanto o Kong corta qualquer
+requisição em 60 s.
+
+Fila e decisões à mão:
+
+```bash
+# o que está preso na fila
+docker exec $(docker ps -q -f 'name=^/supabase_db\.') psql -h 127.0.0.1 -U supabase_admin -d postgres \
+  -c "select id, moderation_status, moderation_attempts, moderation_note from public.audio_posts where moderation_status in ('pending','review_required');"
+
+# rodar o worker fora do cron
+/usr/local/lib/shhhh/moderate-pending-echoes.sh
+```
+
+A decisão humana passa pela Edge Function `moderate-echo` (exige papel `admin`
+ou `moderator` em `user_roles`) e grava `moderation_source = 'human'`.
+
+## 5.2 Feature flags
+
+`public.feature_flags` é lida pelo front (`useFeatureFlags`) **e** pelo banco
+(`public.feature_enabled`, usada nas políticas de RLS e nas RPCs de
+Communities). Ligar/desligar uma área é um `UPDATE`, sem migração nem build:
+
+```sql
+update public.feature_flags set enabled = true, updated_at = now() where key = 'COMMUNITIES_ENABLED';
+```
+
+`COMMUNITIES_ENABLED` está **desligada**: o contêiner existe antes do
+comportamento (publicar Echo dentro da Community ainda não existe). Com ela
+desligada, a rota some da navegação, o roteador redireciona e as RPCs não
+devolvem nada — o gate vale nos três níveis.
+
+## 5.3 Correções de infraestrutura necessárias uma única vez
 
 Encontradas ao executar este runbook em 2026-08-22; já aplicadas em produção.
 
@@ -134,6 +214,14 @@ deixaria toda conta nova sem conseguir entrar.
 O cliente lê `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (veja
 `.env.production.example`). A chave é a **publishable/anon** — qualquer valor em
 `VITE_*` vai para o bundle público; service-role/secret nunca entram aqui.
+
+**Não existe mais endereço embutido no código.** Antes, um build sem `.env`
+apontava calado para a instalação de produção — inclusive um build de teste. Se
+faltar variável, `vite build` para com a mensagem em vez de gerar bundle. Em
+`npm run dev` o aviso aparece no terminal; sem as variáveis o app abre em
+branco, porque o cliente Supabase falha ao carregar. Os testes (`vitest`) e o
+e2e (`playwright`) trazem o próprio ambiente fictício, então nunca falam com a
+instalação real.
 
 ```bash
 cp .env.production.example .env.production   # e preencha os valores
@@ -171,8 +259,13 @@ recusa do cleanup com chave anon e execução do cleanup com a chave correta.
 Echo anônimo e um Echo com Voice, confere que o payload público não expõe
 identidade nem identificador de conta, valida `/e/:id` e `/v/:handle`, força a
 expiração de um Echo e confirma que a mídia sumiu do Storage — removendo tudo
-ao final. Continuam manuais: onboarding, Protect My Voice, comunidades e o
-fluxo de denúncia/bloqueio pela interface.
+ao final. Desde 2026-08-23 ele também prova as correções de autorização: o Echo
+nasce `pending` e invisível, a transcrição do navegador fica isolada em
+`client_transcription`, `PATCH`/`DELETE` diretos em `audio_posts` são recusados,
+`community_members` recusa papel `creator`, o classificador separa
+aprovado/humano/rejeitado, o worker processa a fila e o `exclude` do
+`discovery-feed` é respeitado. Continuam manuais: onboarding, Protect My Voice,
+comunidades e o fluxo de denúncia/bloqueio pela interface.
 
 ## 8. Rollback
 

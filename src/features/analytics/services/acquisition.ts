@@ -49,6 +49,24 @@ function idDaSessao(): string {
   }
 }
 
+/**
+ * Só o host de onde a pessoa veio, nunca a URL inteira.
+ *
+ * Um referrer completo carrega caminho, query string e às vezes identificador
+ * de quem compartilhou — informação que não precisamos para saber que a visita
+ * veio do WhatsApp. Guardar o mínimo que responde à pergunta.
+ */
+function origemAproximada(): string | null {
+  if (typeof document === 'undefined' || !document.referrer) return null
+  try {
+    const url = new URL(document.referrer)
+    if (url.host === window.location.host) return 'interno'
+    return url.host.slice(0, 100)
+  } catch {
+    return null
+  }
+}
+
 async function enviar(evento: AcquisitionEvent, echoId?: string | null, origem?: string | null) {
   const { data } = await supabase.auth.getSession()
   await fetch(`${SUPABASE_URL}/rest/v1/rpc/record_acquisition_event`, {
@@ -62,7 +80,7 @@ async function enviar(evento: AcquisitionEvent, echoId?: string | null, origem?:
       p_session_id: idDaSessao(),
       p_event_type: evento,
       p_echo_id: echoId ?? null,
-      p_source: origem ?? (typeof document !== 'undefined' ? document.referrer.slice(0, 100) || null : null),
+      p_source: origem ?? origemAproximada(),
     }),
   })
 }

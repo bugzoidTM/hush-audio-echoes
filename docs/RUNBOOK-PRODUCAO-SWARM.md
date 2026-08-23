@@ -392,6 +392,18 @@ Três coisas dependem disso e precisam ser lembradas ao mexer em autenticação:
 
 `scripts/deploy/05` checa que os dois caminhos continuam recusando sem captcha.
 
+## 5.1.9 Regra das migrations
+
+Migration aplicada é história. Corrigir editando um arquivo antigo quebra a
+reconstrução do banco (a migration roda antes de o objeto existir) e não alcança
+quem já aplicou aquele arquivo. Aconteceu uma vez: `erase_account_data`, criada
+em `20260824200000`, ganhou um `DELETE` em `legal_acceptances`, que só nasce em
+`20260825000000`.
+
+A correção vai sempre em arquivo novo, com `CREATE OR REPLACE` da função
+inteira. O teste `tests/unit/ordemDasMigrations.test.ts` roda no CI e recusa
+qualquer migration que cite uma tabela criada por outra posterior.
+
 ## 5.2 Feature flags
 
 `public.feature_flags` é lida pelo front (`useFeatureFlags`) **e** pelo banco

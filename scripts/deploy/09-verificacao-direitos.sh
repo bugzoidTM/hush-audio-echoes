@@ -68,6 +68,25 @@ SENHA_ERRADA="$(api -X POST "$PUBLIC_SUPABASE_URL/functions/v1/delete-account" -
   -d '{"password":"senha-errada-de-proposito"}')"
 jq -e '.error != null' >/dev/null <<<"$SENHA_ERRADA" \
   && pass "exclusão recusada com senha errada" || fail "exclusão aceitou senha errada"
+
+# Sessão roubada não pode virar oráculo de senha: a reconfirmação é limitada.
+LIMITE_SENHA=""
+for tentativa in 2 3 4 5 6; do
+  LIMITE_SENHA="$(api -X POST "$PUBLIC_SUPABASE_URL/rest/v1/rpc/verify_my_password" -H 'Content-Type: application/json' \
+    -d '{"p_password":"chute-de-forca-bruta"}')"
+done
+jq -e '(.code // "") == "PT429" or ((.message // "") | test("Limite"))' >/dev/null <<<"$LIMITE_SENHA" \
+  && pass "tentativas de senha são limitadas (força bruta barrada)" \
+  || fail "verify_my_password aceitou tentativas sem limite: $(head -c 120 <<<"$LIMITE_SENHA")"
+
+# O limite não pode trancar o titular fora da própria exclusão logo em seguida.
+db_psql -q -c "delete from public.rate_limit_hits where user_id = '$USER_ID' and action = 'password_check';" >/dev/null
+
+# Telemetria de funil vinculada à conta, para conferir a anonimização depois.
+api -X POST "$PUBLIC_SUPABASE_URL/rest/v1/rpc/record_acquisition_event" -H 'Content-Type: application/json' \
+  -d "$(jq -nc --arg s "sessao-teste-$STAMP" '{p_session_id:$s,p_event_type:"signup_completed"}')" >/dev/null
+EVENTOS_ANTES="$(sql "select count(*) from public.acquisition_events where user_id = '$USER_ID';")"
+[ "$EVENTOS_ANTES" -ge 1 ] && pass "evento de aquisição gravado com a conta" || fail "evento de aquisição não foi gravado"
 AINDA_EXISTE="$(sql "select count(*) from public.audio_posts where owner_user_id = '$USER_ID' and status <> 'deleted';")"
 [ "$AINDA_EXISTE" = "1" ] && pass "nada foi apagado na tentativa recusada" || fail "tentativa recusada apagou dados"
 
@@ -82,6 +101,14 @@ RESTOU="$(sql "select
   (select count(*) from auth.users where id = '$USER_ID')::text;")"
 [ "$RESTOU" = "0|0|0|0" ] && pass "Echoes, Voices, reações e conta de acesso removidos" \
   || fail "sobrou algo após a exclusão (echoes|voices|reacoes|conta): $RESTOU"
+
+# Anonimizar, não apagar: "uma sessão chegou ao cadastro" continua verdade sem
+# guardar de quem era a conta.
+FUNIL_DEPOIS="$(sql "select
+  (select count(*) from public.acquisition_events where user_id = '$USER_ID')::text || '|' ||
+  (select count(*) from public.acquisition_events where session_id = 'sessao-teste-$STAMP')::text;")"
+[ "$FUNIL_DEPOIS" = "0|1" ] && pass "telemetria de funil anonimizada, sem perder a métrica" \
+  || fail "telemetria após exclusão (com conta|total da sessão): $FUNIL_DEPOIS"
 
 # O login por senha exige captcha desde que o Turnstile foi ligado, então a
 # prova aqui é outra: o token que a conta tinha deixa de valer, porque o usuário

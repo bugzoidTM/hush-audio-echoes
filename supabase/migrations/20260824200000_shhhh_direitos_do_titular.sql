@@ -120,7 +120,6 @@ BEGIN
   DELETE FROM public.echo_events WHERE user_id = p_user_id;
   DELETE FROM public.rate_limit_hits WHERE user_id = p_user_id;
   DELETE FROM public.notifications WHERE recipient_user_id = p_user_id;
-  DELETE FROM public.legal_acceptances WHERE user_id = p_user_id;
 
   -- Denúncias feitas perdem o vínculo com a pessoa, mas não somem: apagá-las
   -- deixaria a moderação sem o histórico do caso denunciado, que existe para

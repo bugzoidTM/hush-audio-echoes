@@ -23,6 +23,7 @@ export default function PrivacidadePage() {
           <li><strong>Echoes:</strong> o áudio, a duração, a categoria, o título e a descrição que você escrever.</li>
           <li><strong>Transcrição:</strong> o texto gerado <em>no nosso servidor</em> a partir do áudio publicado. Ele é a base da moderação e aparece no botão “Mostrar transcrição”.</li>
           <li><strong>Uso:</strong> eventos de reprodução (começou, 25%, 50%, 70%, concluiu, pulou), reações, respostas, follows e denúncias. Servem para ordenar o Discovery e detectar abuso.</li>
+          <li><strong>Aquisição:</strong> por onde você chegou e até onde avançou — landing, prévia, Echo compartilhado, cadastro, onboarding. Guardamos um identificador aleatório de sessão (que não é sua conta) e a <em>origem aproximada</em> da visita: apenas o site de onde você veio, como <code>wa.me</code>, nunca o endereço completo com o que houver depois da barra. Serve para saber se o produto está sendo encontrado, e não influencia o que aparece no Discovery.</li>
           <li><strong>Moderação:</strong> decisões, notas e o histórico das denúncias que envolvem seu conteúdo.</li>
         </ul>
         <p>
@@ -78,12 +79,14 @@ export default function PrivacidadePage() {
           <li>seus Echoes (marcados como apagados e com a mídia removida do armazenamento na rotina seguinte);</li>
           <li>suas Voices;</li>
           <li>suas reações, follows, bloqueios, preferências, notificações e eventos de uso;</li>
+          <li>o registro de aceite dos documentos;</li>
           <li>sua conta de acesso e credenciais.</li>
         </ul>
         <p>
           Denúncias que você fez perdem o vínculo com você, mas o caso denunciado permanece na moderação: apagá-lo
-          deixaria terceiros desprotegidos. Cópias já baixadas ou compartilhadas por outras pessoas fora do shhhh
-          não estão ao nosso alcance.
+          deixaria terceiros desprotegidos. Os eventos de aquisição também perdem o vínculo com a conta — continua
+          registrado que <em>uma</em> sessão chegou ao cadastro, sem registrar que era a sua. Cópias já baixadas ou
+          compartilhadas por outras pessoas fora do shhhh não estão ao nosso alcance.
         </p>
       </Secao>
 

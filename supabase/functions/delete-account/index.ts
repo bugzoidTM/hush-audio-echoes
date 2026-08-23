@@ -48,6 +48,11 @@ serve(async (request) => {
     p_password: body.password,
   })
   if (erroSenha) {
+    // A RPC limita tentativas (5 por 15 min) e sinaliza com PT429: uma sessão
+    // roubada não pode virar oráculo de senha.
+    if (erroSenha.code === 'PT429') {
+      return json({ error: 'Muitas tentativas de senha. Espere alguns minutos e tente de novo.' }, 429)
+    }
     console.error('delete-account: verificação de senha falhou', erroSenha.message)
     return json({ error: 'Não foi possível confirmar sua senha. Tente novamente.' }, 500)
   }

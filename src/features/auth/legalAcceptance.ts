@@ -16,7 +16,10 @@ export const DOCUMENT_VERSIONS = {
 } as const
 
 export async function recordLegalAcceptance(accessToken: string): Promise<void> {
-  await fetch(`${SUPABASE_URL}/rest/v1/rpc/record_legal_acceptance`, {
+  // `fetch` só rejeita em falha de rede: um 400 ou 500 resolvia normalmente, o
+  // `.catch` de quem chama nunca rodava e o app seguia achando que o aceite
+  // tinha sido registrado. Uma falha dessas só apareceria num pedido judicial.
+  const resposta = await fetch(`${SUPABASE_URL}/rest/v1/rpc/record_legal_acceptance`, {
     method: 'POST',
     headers: {
       apikey: SUPABASE_PUBLISHABLE_KEY,
@@ -30,4 +33,25 @@ export async function recordLegalAcceptance(accessToken: string): Promise<void> 
       p_adult_declared: true,
     }),
   })
+
+  if (!resposta.ok) {
+    const detalhe = await resposta.text().catch(() => '')
+    throw new Error(`aceite não registrado (HTTP ${resposta.status}) ${detalhe}`.trim())
+  }
+}
+
+/** Detecta conta que ficou sem o aceite da versão vigente. */
+export async function hasCurrentLegalAcceptance(): Promise<boolean> {
+  const { data } = await supabase.auth.getSession()
+  const resposta = await fetch(`${SUPABASE_URL}/rest/v1/rpc/has_current_legal_acceptance`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${data.session?.access_token ?? SUPABASE_PUBLISHABLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ p_terms_version: DOCUMENT_VERSIONS.terms }),
+  })
+  if (!resposta.ok) return false
+  return (await resposta.json()) === true
 }

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { CreateEchoModal } from '@/features/echoes/components/CreateEchoModal'
 import { trackAppOpen } from '@/features/analytics/services/analytics'
 import { isOnboardingComplete } from '@/features/echoes/services/hushApi'
+import { LegalGate } from '@/features/auth/LegalGate'
 import { useAuth } from '@/hooks/useAuth'
 import { useFeatureFlags } from '@/hooks/useFeatureFlags'
 
@@ -75,6 +76,8 @@ export function HushLayout() {
       <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">
         <Outlet context={{ openCreate } satisfies HushOutletContext} />
       </div>
+
+      <LegalGate />
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95" aria-label="Navegação principal">
         <div className={`mx-auto grid max-w-3xl items-end px-2 ${visibleNavItems.length >= 4 ? 'grid-cols-5' : 'grid-cols-4'}`}>

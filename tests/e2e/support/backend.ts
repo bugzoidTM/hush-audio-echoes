@@ -24,6 +24,8 @@ export interface BackendState {
   onboardingComplete: boolean
   following: boolean
   contatoEnviado: boolean
+  /** Aceite dos documentos já registrado para a conta simulada. */
+  aceiteRegistrado: boolean
   ids: { userId: string; voiceId: string; echoId: string; otherEchoId: string }
 }
 
@@ -91,6 +93,7 @@ export async function mockBackend(page: Page): Promise<BackendState> {
     onboardingComplete: false,
     following: false,
     contatoEnviado: false,
+    aceiteRegistrado: true,
     ids: { userId, voiceId, echoId, otherEchoId },
   }
 
@@ -184,6 +187,13 @@ export async function mockBackend(page: Page): Promise<BackendState> {
     }
     if (path.startsWith('/rest/v1/rpc/get_my_echo_status')) {
       return json(route, [{ id: echoId, moderation_status: state.moderationStatus, moderated_at: null, published_at: new Date().toISOString() }])
+    }
+    if (path.startsWith('/rest/v1/rpc/has_current_legal_acceptance')) {
+      return json(route, state.aceiteRegistrado)
+    }
+    if (path.startsWith('/rest/v1/rpc/record_legal_acceptance')) {
+      state.aceiteRegistrado = true
+      return json(route, new Date().toISOString())
     }
     if (path.startsWith('/rest/v1/rpc/get_public_preview_feed')) {
       const body = request.postDataJSON?.() as { p_exclude_ids?: string[] } | undefined

@@ -86,6 +86,7 @@ export default function PreviewPage() {
             active
             guest
             onAudioStarted={() => trackAcquisition('preview_play', atual.id)}
+            onAudioCompleted={() => trackAcquisition('preview_complete', atual.id)}
             onReply={() => undefined}
             onFollow={() => undefined}
             onGuestAction={() => navigate('/auth?mode=signup')}

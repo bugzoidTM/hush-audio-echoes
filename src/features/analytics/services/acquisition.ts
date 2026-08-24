@@ -19,6 +19,7 @@ export type AcquisitionEvent =
   | 'preview_gate_reached'
   | 'shared_echo_view'
   | 'shared_echo_play'
+  | 'shared_echo_complete'
   | 'signup_view'
   | 'signup_completed'
   | 'onboarding_completed'

@@ -9,10 +9,16 @@ interface EchoPlayerProps {
   audioUrl: string
   duration: number
   onStarted?: () => void
+  /**
+   * Ouviu até o fim. É o sinal que separa curiosidade de interesse — quem
+   * chama decide o que fazer com ele (a prévia mede conversão, o feed mede
+   * ranking).
+   */
+  onCompleted?: () => void
   active?: boolean
 }
 
-export function EchoPlayer({ echoId, audioUrl, duration, onStarted, active = true }: EchoPlayerProps) {
+export function EchoPlayer({ echoId, audioUrl, duration, onStarted, onCompleted, active = true }: EchoPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const milestones = useRef(new Set<number>())
   // Progresso e início ficam em ref porque quem decide o skip é o efeito de
@@ -119,6 +125,7 @@ export function EchoPlayer({ echoId, audioUrl, duration, onStarted, active = tru
           setCurrentTime(effectiveDuration)
           progressRef.current = 1
           void trackEchoEvent(echoId, 'play_complete', effectiveDuration)
+          onCompleted?.()
         }}
       />
       <div className="flex items-center gap-3">

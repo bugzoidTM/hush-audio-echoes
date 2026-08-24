@@ -50,6 +50,26 @@ describe('sinal de skip do Discovery', () => {
     expect(trackEchoEvent).not.toHaveBeenCalledWith(expect.any(String), 'skip', expect.anything())
   })
 
+  it('avisa quem o usa quando o áudio termina', () => {
+    // "Ouviu até o fim" separa curiosidade de interesse: é o que a prévia usa
+    // para medir conversão. O evento existia no allowlist e nunca era chamado.
+    const aoConcluir = vi.fn()
+    const view = render(
+      <EchoPlayer
+        echoId="11111111-1111-1111-1111-111111111111"
+        audioUrl="https://exemplo.test/a.webm"
+        duration={100}
+        active
+        onCompleted={aoConcluir}
+      />,
+    )
+    const audio = view.container.querySelector('audio') as HTMLAudioElement
+    audio.dispatchEvent(new Event('ended'))
+
+    expect(aoConcluir).toHaveBeenCalledTimes(1)
+    expect(trackEchoEvent).toHaveBeenCalledWith(expect.any(String), 'play_complete', 100)
+  })
+
   it('não conta skip em card que nunca foi tocado', () => {
     const view = renderPlayer(true)
     view.rerender(<EchoPlayer echoId="11111111-1111-1111-1111-111111111111" audioUrl="https://exemplo.test/a.webm" duration={100} active={false} />)

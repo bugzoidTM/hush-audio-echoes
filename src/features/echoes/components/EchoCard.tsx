@@ -17,6 +17,7 @@ interface EchoCardProps {
   echo: PublicEcho
   active: boolean
   onAudioStarted: () => void
+  onAudioCompleted?: () => void
   onReply: (echo: PublicEcho) => void
   onFollow: (echo: PublicEcho) => void
   /**
@@ -35,7 +36,7 @@ const reactions: Array<{ type: EchoReactionType; label: string; shortLabel: stri
   { type: 'helped', label: 'Me ajudou', shortLabel: 'Me ajudou' },
 ]
 
-export function EchoCard({ echo, active, onAudioStarted, onReply, onFollow, guest = false, onGuestAction }: EchoCardProps) {
+export function EchoCard({ echo, active, onAudioStarted, onAudioCompleted, onReply, onFollow, guest = false, onGuestAction }: EchoCardProps) {
   const { toast } = useToast()
   const [selectedReaction, setSelectedReaction] = useState<EchoReactionType | null>(null)
   const [showTranscript, setShowTranscript] = useState(false)
@@ -119,7 +120,7 @@ export function EchoCard({ echo, active, onAudioStarted, onReply, onFollow, gues
           )}
         </div>
 
-        <EchoPlayer echoId={echo.id} audioUrl={echo.audio_url} duration={echo.duration} active={active} onStarted={onAudioStarted} />
+        <EchoPlayer echoId={echo.id} audioUrl={echo.audio_url} duration={echo.duration} active={active} onStarted={onAudioStarted} onCompleted={onAudioCompleted} />
 
         <div className="mt-6 flex flex-wrap gap-2" aria-label="Reações">
           {reactions.map((reaction) => {

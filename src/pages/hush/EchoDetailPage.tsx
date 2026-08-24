@@ -124,6 +124,7 @@ export default function EchoDetailPage() {
           setActive(true)
           if (visitante) { rememberHeard(query.data!.id); trackAcquisition('shared_echo_play', echoId) }
         }}
+        onAudioCompleted={() => { if (visitante) trackAcquisition('shared_echo_complete', echoId) }}
         onReply={(echo) => outlet?.openCreate(echo.id) ?? navigate('/app/echoes')}
         onFollow={(echo) => echo.voice_handle && navigate(`/v/${echo.voice_handle.replace('@', '')}`)}
         onGuestAction={() => navigate('/auth?mode=signup')}

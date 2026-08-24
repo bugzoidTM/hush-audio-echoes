@@ -70,7 +70,7 @@ export default function PreviewPage() {
     <main className="mx-auto max-w-3xl px-4 pb-16 pt-6 sm:px-6">
       <header className="mb-4 flex items-center justify-between gap-3">
         <Link to="/" className="text-lg font-black tracking-[-0.06em] text-slate-950 dark:text-white">shhhh<span className="text-indigo-500">.</span></Link>
-        <Button asChild variant="ghost" className="rounded-xl"><Link to="/auth">Entrar</Link></Button>
+        <Button asChild variant="ghost" className="rounded-xl"><Link to="/auth?mode=signin">Entrar</Link></Button>
       </header>
 
       <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-200">
@@ -88,11 +88,11 @@ export default function PreviewPage() {
             onAudioStarted={() => trackAcquisition('preview_play', atual.id)}
             onReply={() => undefined}
             onFollow={() => undefined}
-            onGuestAction={() => navigate('/auth')}
+            onGuestAction={() => navigate('/auth?mode=signup')}
           />
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <Button size="lg" className="rounded-2xl" onClick={ouvirProximo}>Ouvir outro Echo</Button>
-            <Button asChild size="lg" variant="outline" className="rounded-2xl"><Link to="/auth">Criar conta grátis</Link></Button>
+            <Button asChild size="lg" variant="outline" className="rounded-2xl"><Link to="/auth?mode=signup">Criar conta grátis</Link></Button>
           </div>
         </>
       ) : null}
@@ -111,8 +111,8 @@ function Convite({ ouvidos }: { ouvidos: number }) {
           Há muitas outras esperando para serem ouvidas. Crie sua conta grátis para continuar.
         </p>
         <p className="mt-3 text-sm text-slate-500">E-mail e senha. Sem telefone, sem cartão.</p>
-        <Button asChild size="lg" className="mt-7 w-full rounded-2xl"><Link to="/auth">Criar conta grátis</Link></Button>
-        <Button asChild variant="ghost" className="mt-2 w-full rounded-2xl"><Link to="/auth">Já tenho conta</Link></Button>
+        <Button asChild size="lg" className="mt-7 w-full rounded-2xl"><Link to="/auth?mode=signup">Criar conta grátis</Link></Button>
+        <Button asChild variant="ghost" className="mt-2 w-full rounded-2xl"><Link to="/auth?mode=signin">Já tenho conta</Link></Button>
         <p className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-400">
           <Lock className="size-3" /> Você pode publicar de forma anônima, sem vincular sua identidade.
         </p>

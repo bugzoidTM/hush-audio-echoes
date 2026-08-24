@@ -87,6 +87,22 @@ test.describe('visitante sem conta', () => {
     expect(backend.contatoEnviado).toBe(true)
   })
 
+  test('quem clica em criar conta chega na aba de cadastro', async ({ page }) => {
+    const backend = await mockBackend(page)
+    backend.moderationStatus = 'approved'
+
+    // Chegar na aba Entrar depois de clicar em "Criar conta grátis" é pequeno
+    // tecnicamente e caro em conversão: é o passo mais frágil do funil.
+    await page.goto(`/e/${backend.ids.echoId}`)
+    await page.getByRole('link', { name: /criar conta grátis/i }).click()
+    await expect(page).toHaveURL(/\/auth\?mode=signup/)
+    await expect(page.getByRole('tab', { name: /cadastrar/i })).toHaveAttribute('data-state', 'active')
+
+    // E "Entrar" continua abrindo em entrar.
+    await page.goto('/auth?mode=signin')
+    await expect(page.getByRole('tab', { name: 'Entrar' })).toHaveAttribute('data-state', 'active')
+  })
+
   test('a landing manda o visitante ouvir, não se cadastrar', async ({ page }) => {
     await mockBackend(page)
     await page.goto('/')

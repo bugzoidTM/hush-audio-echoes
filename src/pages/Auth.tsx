@@ -11,17 +11,31 @@ import { TurnstileWidget } from '@/features/auth/TurnstileWidget';
 import { turnstileEnabled } from '@/features/auth/turnstile';
 import { DOCUMENT_VERSIONS, recordLegalAcceptance } from '@/features/auth/legalAcceptance';
 import { trackAcquisition } from '@/features/analytics/services/acquisition';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect } from 'react';
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
+  // Quem clicou em "Criar conta grátis" chegava na aba Entrar e tinha de
+  // descobrir sozinho que precisava trocar de aba. Custa pouco tecnicamente e
+  // caro em conversão, justo no passo mais frágil do funil.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const modo = searchParams.get('mode') === 'signup' ? 'signup' : 'signin';
+  const trocarModo = (proximo: string) => {
+    setSearchParams(proximo === 'signup' ? { mode: 'signup' } : {}, { replace: true });
+  };
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  useEffect(() => { trackAcquisition('signup_view') }, []);
+  // Só conta como "abriu o cadastro" quando a aba de cadastro está à frente.
+  // Disparar em toda visita a /auth misturaria quem só queria entrar, e a
+  // conversão signup_view → signup_completed sairia artificialmente baixa.
+  useEffect(() => {
+    if (modo === 'signup') trackAcquisition('signup_view');
+  }, [modo]);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -137,7 +151,7 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
+          <Tabs value={modo} onValueChange={trocarModo} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Entrar</TabsTrigger>
               <TabsTrigger value="signup">Cadastrar</TabsTrigger>

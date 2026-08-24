@@ -111,7 +111,7 @@ export default function EchoDetailPage() {
       {visitante ? (
         <div className="mt-5 flex items-center justify-between gap-3">
           <Link to="/" className="text-lg font-black tracking-[-0.06em] text-slate-950 dark:text-white">shhhh<span className="text-indigo-500">.</span></Link>
-          <Button asChild variant="ghost" className="rounded-xl"><Link to="/auth">Entrar</Link></Button>
+          <Button asChild variant="ghost" className="rounded-xl"><Link to="/auth?mode=signin">Entrar</Link></Button>
         </div>
       ) : (
         <Link to="/app/echoes" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-slate-500"><ArrowLeft className="size-4" /> Echoes</Link>
@@ -126,7 +126,7 @@ export default function EchoDetailPage() {
         }}
         onReply={(echo) => outlet?.openCreate(echo.id) ?? navigate('/app/echoes')}
         onFollow={(echo) => echo.voice_handle && navigate(`/v/${echo.voice_handle.replace('@', '')}`)}
-        onGuestAction={() => navigate('/auth')}
+        onGuestAction={() => navigate('/auth?mode=signup')}
       />
 
       {/* O convite vem DEPOIS do áudio: a pessoa já sabe o que está deixando
@@ -138,7 +138,7 @@ export default function EchoDetailPage() {
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Descubra mais Echoes — e conte o seu, com ou sem seu nome.</p>
           <div className="mt-5 grid gap-2 sm:grid-cols-2">
             <Button asChild size="lg" className="rounded-2xl"><Link to="/ouvir">Continuar ouvindo</Link></Button>
-            <Button asChild size="lg" variant="outline" className="rounded-2xl"><Link to="/auth">Criar conta grátis</Link></Button>
+            <Button asChild size="lg" variant="outline" className="rounded-2xl"><Link to="/auth?mode=signup">Criar conta grátis</Link></Button>
           </div>
         </section>
       )}
@@ -168,7 +168,7 @@ export default function EchoDetailPage() {
           <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700">
             <p>Ainda não há respostas. Responder com a sua voz costuma dizer mais que um comentário.</p>
             {visitante ? (
-              <Button asChild variant="outline" className="mt-4 rounded-xl"><Link to="/auth">Criar conta para responder</Link></Button>
+              <Button asChild variant="outline" className="mt-4 rounded-xl"><Link to="/auth?mode=signup">Criar conta para responder</Link></Button>
             ) : (
               <Button variant="outline" className="mt-4 rounded-xl" onClick={() => outlet?.openCreate(query.data.id) ?? navigate('/app/echoes')}>Responder com áudio</Button>
             )}
